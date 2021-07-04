@@ -7,7 +7,7 @@ RUN apk add --update ${test_dependencies}
 
 WORKDIR /home/oauthsrv/
 USER oauthsrv
-COPY ./go.mod ./
+COPY ./go.mod ./go.sum ./
 RUN go mod download
 
 CMD ["go", "run", "oauthsrv.go"]
