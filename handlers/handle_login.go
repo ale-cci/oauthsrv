@@ -1,10 +1,10 @@
 package handlers
 
 import (
+	"github.com/ale-cci/oauthsrv/passwords"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
-	"github.com/ale-cci/oauthsrv/passwords"
 )
 
 func handleLogin(cnf *Config, w http.ResponseWriter, r *http.Request) {

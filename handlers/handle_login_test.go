@@ -7,12 +7,12 @@ import (
 	"github.com/ale-cci/oauthsrv/handlers"
 	"github.com/ale-cci/oauthsrv/passwords"
 	"go.mongodb.org/mongo-driver/bson"
+	"golang.org/x/net/publicsuffix"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
 	"testing"
-	"net/http/cookiejar"
-	"golang.org/x/net/publicsuffix"
 )
 
 func NewTestServer(cnf *handlers.Config) *httptest.Server {
@@ -39,7 +39,6 @@ func TestHandleLoginPost(t *testing.T) {
 	srv := NewTestServer(cnf)
 	defer srv.Close()
 	client := NoFollowRedirectClient(srv)
-
 
 	password, _ := passwords.New(rand.Reader, "password")
 	cnf.Database.Collection("identities").InsertOne(context.Background(), bson.D{
