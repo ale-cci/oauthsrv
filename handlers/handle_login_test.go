@@ -2,15 +2,16 @@ package handlers_test
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"github.com/ale-cci/oauthsrv/handlers"
+	"github.com/ale-cci/oauthsrv/passwords"
 	"go.mongodb.org/mongo-driver/bson"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 )
-
 
 func TestPost_HandlerLogin(t *testing.T) {
 	router := http.NewServeMux()
@@ -24,9 +25,10 @@ func TestPost_HandlerLogin(t *testing.T) {
 		return http.ErrUseLastResponse
 	}
 
+	password, _ := passwords.New(rand.Reader, "password")
 	cnf.Database.Collection("identities").InsertOne(context.Background(), bson.D{
-		{Key: "email", Value: "test@email.com"},
-		{Key: "password", Value: "password"},
+		{Key: "_id", Value: "test@email.com"},
+		{Key: "password", Value: password},
 	})
 
 	tt := []struct {

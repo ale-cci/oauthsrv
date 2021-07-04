@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/ale-cci/oauthsrv/passwords"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
@@ -15,10 +16,10 @@ func handleLogin(cnf *Config, w http.ResponseWriter, r *http.Request) {
 		afterLogin := r.URL.Query().Get("continue")
 
 		var identity struct {
-			Email    string `bson:"email"`
+			Email    string `bson:"_id"`
 			Password string `bson:"password"`
 		}
-		err := cnf.Database.Collection("identities").FindOne(r.Context(), bson.D{{Key: "email", Value: username}}).Decode(&identity)
+		err := cnf.Database.Collection("identities").FindOne(r.Context(), bson.D{{Key: "_id", Value: username}}).Decode(&identity)
 
 		if err != nil {
 			if err != mongo.ErrNoDocuments {
@@ -29,11 +30,11 @@ func handleLogin(cnf *Config, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if identity.Password == password {
-			http.Redirect(w, r, afterLogin, http.StatusFound)
+		if err := passwords.Validate(identity.Password, password); err != nil {
+			http.Redirect(w, r, r.URL.RequestURI(), http.StatusFound)
 			return
 		}
 
-		http.Redirect(w, r, r.URL.RequestURI(), http.StatusFound)
+		http.Redirect(w, r, afterLogin, http.StatusFound)
 	}
 }
