@@ -13,3 +13,19 @@ services:
       - 8080:8080
     environment:
       PORT: 8080
+      MONGO_CONNSTR: 'mongodb://root:pass@mongo:27017'
+      DB_NAME: 'oidc'
+
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: pass
+
+volumes:
+  mongo-data: {}
