@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-func TestPost_HandlerLogin(t *testing.T) {
+func TestHandleLoginPost(t *testing.T) {
 	router := http.NewServeMux()
 	cnf, _ := handlers.EnvConfig()
 	handlers.AddRoutes(cnf, router)
@@ -31,72 +31,125 @@ func TestPost_HandlerLogin(t *testing.T) {
 		{Key: "password", Value: password},
 	})
 
-	tt := []struct {
-		TestCaseName   string
-		Username       string
-		Password       string
-		Continue       string
-		ExpectStatus   int
-		ExpectLocation string
-	}{
-		{
-			TestCaseName:   "blank credentials should redirect to /login",
-			Username:       "",
-			Password:       "",
-			Continue:       "/after-login",
-			ExpectStatus:   http.StatusFound,
-			ExpectLocation: "/login?continue=%2Fafter-login",
-		},
-		{
-			TestCaseName:   "correct credentials should redirect to continue",
-			Username:       "test@email.com",
-			Password:       "password",
-			Continue:       "/after-login",
-			ExpectStatus:   http.StatusFound,
-			ExpectLocation: "/after-login",
-		},
-		{
-			TestCaseName:   "Wrong password should not allow login",
-			Username:       "test@email.com",
-			Password:       "pass",
-			Continue:       "after",
-			ExpectStatus:   http.StatusFound,
-			ExpectLocation: "/login?continue=after",
-		},
-	}
+	t.Run("should allow authentication only when username and password matches", func(t *testing.T) {
+		tt := []struct {
+			TestCaseName   string
+			Username       string
+			Password       string
+			Continue       string
+			ExpectStatus   int
+			ExpectLocation string
+		}{
+			{
+				TestCaseName:   "blank credentials should redirect to /login",
+				Username:       "",
+				Password:       "",
+				Continue:       "/after-login",
+				ExpectStatus:   http.StatusFound,
+				ExpectLocation: "/login?continue=%2Fafter-login",
+			},
+			{
+				TestCaseName:   "correct credentials should redirect to continue",
+				Username:       "test@email.com",
+				Password:       "password",
+				Continue:       "/after-login",
+				ExpectStatus:   http.StatusFound,
+				ExpectLocation: "/after-login",
+			},
+			{
+				TestCaseName:   "Wrong password should not allow login",
+				Username:       "test@email.com",
+				Password:       "pass",
+				Continue:       "after",
+				ExpectStatus:   http.StatusFound,
+				ExpectLocation: "/login?continue=after",
+			},
+		}
 
-	for i, tc := range tt {
-		name := fmt.Sprintf("[%d] %s", i, tc.TestCaseName)
+		for i, tc := range tt {
+			name := fmt.Sprintf("[%d] %s", i, tc.TestCaseName)
 
-		t.Run(name, func(t *testing.T) {
-			values := url.Values{
-				"username": []string{tc.Username},
-				"password": []string{tc.Password},
-			}
+			t.Run(name, func(t *testing.T) {
+				values := url.Values{
+					"username": []string{tc.Username},
+					"password": []string{tc.Password},
+				}
 
-			resp, err := client.PostForm(srv.URL+"/login?continue="+url.QueryEscape(tc.Continue), values)
-			if err != nil {
-				t.Errorf("Unexpected error: %v", err)
-			}
+				resp, err := client.PostForm(srv.URL+"/login?continue="+url.QueryEscape(tc.Continue), values)
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
 
-			gotStatus := resp.StatusCode
-			wantStatus := tc.ExpectStatus
+				gotStatus := resp.StatusCode
+				wantStatus := tc.ExpectStatus
 
-			if gotStatus != wantStatus {
-				t.Fatalf("want status code: %d, got: %d", wantStatus, gotStatus)
-			}
+				if gotStatus != wantStatus {
+					t.Fatalf("want status code: %d, got: %d", wantStatus, gotStatus)
+				}
 
-			var url *url.URL
-			url, err = resp.Location()
-			if err != nil {
-				t.Errorf("Unexpected error on retrieving location: %v", err)
-			}
+				var url *url.URL
+				url, err = resp.Location()
+				if err != nil {
+					t.Errorf("Unexpected error on retrieving location: %v", err)
+				}
 
-			got := url.RequestURI()
-			want := tc.ExpectLocation
-			if got != want {
-				t.Errorf("want: %q, got: %q", want, got)
-			}
-		})
-	}
+				got := url.RequestURI()
+				want := tc.ExpectLocation
+				if got != want {
+					t.Errorf("want: %q, got: %q", want, got)
+				}
+			})
+		}
+	})
+
+	t.Run("should add cookie only if username and password matches", func(t *testing.T) {
+		tt := []struct{
+			TestCaseName string
+			Username, Password string
+			ReturnsCookie bool
+		}{
+			{
+				"Should return cookie for authenticated user",
+				"test@email.com", "password",
+				true,
+			},
+			{
+				"Should not return cookie if credentials are incorrect",
+				"test@email.com", "a",
+				false,
+			},
+		}
+
+		for i, tc := range tt {
+			name := fmt.Sprintf("[%d] %s", i, tc.TestCaseName)
+			t.Run(name, func(t *testing.T) {
+
+				values := url.Values{
+					"username": []string{tc.Username},
+					"password": []string{tc.Password},
+				}
+
+				resp, err := client.PostForm(srv.URL + "/login?continue=%2Ftest", values)
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+
+				found := false
+				for _, cookie := range resp.Cookies() {
+					if cookie.Name == "sid" {
+						found = true
+						break
+					}
+				}
+
+				if found != tc.ReturnsCookie {
+					if tc.ReturnsCookie {
+						t.Errorf("Response does not contain cookie with name 'sid'")
+					} else {
+						t.Errorf("Response should not contain cookie 'sid'")
+					}
+				}
+			})
+		}
+	})
 }

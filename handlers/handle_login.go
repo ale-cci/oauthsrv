@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"github.com/ale-cci/oauthsrv/passwords"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
+	"github.com/ale-cci/oauthsrv/passwords"
 )
 
 func handleLogin(cnf *Config, w http.ResponseWriter, r *http.Request) {
@@ -34,6 +34,9 @@ func handleLogin(cnf *Config, w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, r.URL.RequestURI(), http.StatusFound)
 			return
 		}
+
+		cookie := http.Cookie{Name: "sid", Value: "1"}
+		http.SetCookie(w, &cookie)
 
 		http.Redirect(w, r, afterLogin, http.StatusFound)
 	}
