@@ -11,19 +11,35 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"net/http/cookiejar"
+	"golang.org/x/net/publicsuffix"
 )
 
-func TestHandleLoginPost(t *testing.T) {
+func NewTestServer(cnf *handlers.Config) *httptest.Server {
 	router := http.NewServeMux()
-	cnf, _ := handlers.EnvConfig()
+	if cnf == nil {
+		cnf, _ = handlers.EnvConfig()
+	}
 	handlers.AddRoutes(cnf, router)
 	srv := httptest.NewServer(router)
-	defer srv.Close()
+	return srv
+}
 
+func NoFollowRedirectClient(srv *httptest.Server) *http.Client {
 	client := srv.Client()
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
+
+	return client
+}
+
+func TestHandleLoginPost(t *testing.T) {
+	cnf, _ := handlers.EnvConfig()
+	srv := NewTestServer(cnf)
+	defer srv.Close()
+	client := NoFollowRedirectClient(srv)
+
 
 	password, _ := passwords.New(rand.Reader, "password")
 	cnf.Database.Collection("identities").InsertOne(context.Background(), bson.D{
@@ -103,10 +119,10 @@ func TestHandleLoginPost(t *testing.T) {
 	})
 
 	t.Run("should add cookie only if username and password matches", func(t *testing.T) {
-		tt := []struct{
-			TestCaseName string
+		tt := []struct {
+			TestCaseName       string
 			Username, Password string
-			ReturnsCookie bool
+			ReturnsCookie      bool
 		}{
 			{
 				"Should return cookie for authenticated user",
@@ -129,7 +145,7 @@ func TestHandleLoginPost(t *testing.T) {
 					"password": []string{tc.Password},
 				}
 
-				resp, err := client.PostForm(srv.URL + "/login?continue=%2Ftest", values)
+				resp, err := client.PostForm(srv.URL+"/login?continue=%2Ftest", values)
 				if err != nil {
 					t.Errorf("Unexpected error: %v", err)
 				}
@@ -150,6 +166,38 @@ func TestHandleLoginPost(t *testing.T) {
 					}
 				}
 			})
+		}
+	})
+}
+
+func TestHandleLoginGet(t *testing.T) {
+	srv := NewTestServer(nil)
+	defer srv.Close()
+
+	client := NoFollowRedirectClient(srv)
+	client.Jar, _ = cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
+
+	t.Run("should redirect to continue if user has sid cookie", func(t *testing.T) {
+
+		srvURL, _ := url.Parse(srv.URL)
+		client.Jar.SetCookies(srvURL, []*http.Cookie{
+			{Name: "sid", Value: "1"},
+		})
+
+		resp, err := client.Get(srv.URL + "/login?continue=%2Fcontinue")
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+
+		respUrl, err := resp.Location()
+		if err != nil {
+			t.Errorf("Unexpected error while retrieving location: %v", err)
+		}
+
+		got := respUrl.RequestURI()
+		want := "/continue"
+		if got != want {
+			t.Errorf("want: %q, got: %q", want, got)
 		}
 	})
 }

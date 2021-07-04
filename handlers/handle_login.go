@@ -9,6 +9,11 @@ import (
 
 func handleLogin(cnf *Config, w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
+		_, err := r.Cookie("sid")
+		if err != http.ErrNoCookie {
+			http.Redirect(w, r, "/continue", http.StatusFound)
+			return
+		}
 		w.WriteHeader(200)
 	} else {
 		username := r.FormValue("username")
@@ -35,8 +40,7 @@ func handleLogin(cnf *Config, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		cookie := http.Cookie{Name: "sid", Value: "1"}
-		http.SetCookie(w, &cookie)
+		http.SetCookie(w, &http.Cookie{Name: "sid", Value: "1"})
 
 		http.Redirect(w, r, afterLogin, http.StatusFound)
 	}

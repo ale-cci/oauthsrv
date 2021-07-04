@@ -6,6 +6,7 @@ RUN adduser -G users -D oauthsrv
 RUN apk add --update ${test_dependencies}
 
 WORKDIR /home/oauthsrv/
+
 USER oauthsrv
 COPY ./go.mod ./go.sum ./
 RUN go mod download
