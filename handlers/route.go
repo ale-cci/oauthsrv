@@ -11,6 +11,12 @@ type Router interface {
 // Register all handlers to a given router
 func AddRoutes(cnf *Config, router Router) {
 	router.HandleFunc("/healthcheck", cnf.apply(handleHealthCheck))
+	router.HandleFunc("/login", cnf.apply(handleLogin))
+	router.HandleFunc("/oauth/v2/auth", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Location", "/")
+		w.WriteHeader(http.StatusFound)
+	})
+
 }
 
 // Healthcheck endpoint, returns 500 in case of problems
