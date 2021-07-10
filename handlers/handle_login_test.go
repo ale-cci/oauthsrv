@@ -170,7 +170,8 @@ func TestHandleLoginPost(t *testing.T) {
 }
 
 func TestHandleLoginGet(t *testing.T) {
-	srv := NewTestServer(nil)
+	cnf, _ := handlers.EnvConfig()
+	srv := NewTestServer(cnf)
 	defer srv.Close()
 
 	client := NoFollowRedirectClient(srv)
