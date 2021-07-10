@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -e -o pipefail
+
+for hook in `dirname $0`/pre-commit.d/*
+do
+    echo "Running hook: $hook"
+    bash $hook
+done
