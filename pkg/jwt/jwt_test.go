@@ -1,7 +1,7 @@
 package jwt_test
 
 import (
-	"github.com/ale-cci/oauthsrv/jwt"
+	"github.com/ale-cci/oauthsrv/pkg/jwt"
 	"strings"
 	"testing"
 )

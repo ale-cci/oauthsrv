@@ -1,16 +1,15 @@
 package handlers_test
 
 import (
-	"testing"
 	"context"
+	"github.com/ale-cci/oauthsrv/pkg/handlers"
 	"os"
-	"github.com/ale-cci/oauthsrv/handlers"
+	"testing"
 )
 
 func init() {
 	os.Setenv("DB_NAME", "test-oidc")
 }
-
 
 func TestEnvConfig(t *testing.T) {
 	t.Run("Should have valid database connection field", func(t *testing.T) {
@@ -23,7 +22,6 @@ func TestEnvConfig(t *testing.T) {
 			t.Errorf("Invalid mongo connection: %v", err)
 		}
 	})
-
 
 	t.Run("should connect to test database", func(t *testing.T) {
 		cfg, err := handlers.EnvConfig()

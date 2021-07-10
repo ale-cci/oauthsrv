@@ -2,8 +2,8 @@ package handlers_test
 
 import (
 	"context"
-	"github.com/ale-cci/oauthsrv/handlers"
 	"fmt"
+	"github.com/ale-cci/oauthsrv/pkg/handlers"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -50,7 +50,6 @@ func TestHealthcheck(t *testing.T) {
 	})
 }
 
-
 func TestRoutedFunctions(t *testing.T) {
 	router := http.NewServeMux()
 	cnf, _ := handlers.EnvConfig()
@@ -63,9 +62,9 @@ func TestRoutedFunctions(t *testing.T) {
 		return http.ErrUseLastResponse
 	}
 
-	tt := []struct{
+	tt := []struct {
 		Endpoint string
-		Status int
+		Status   int
 	}{
 		{"/oauth/v2/auth", 302},
 		{"/login", 200},

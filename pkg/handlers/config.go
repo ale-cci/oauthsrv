@@ -13,6 +13,7 @@ type Config struct {
 	Database *mongo.Database
 }
 
+// Read service configuration from environment variables
 func EnvConfig() (*Config, error) {
 	mongoConnStr := os.Getenv("MONGO_CONNSTR")
 	client, err := mongo.NewClient(options.Client().ApplyURI(mongoConnStr))
@@ -30,7 +31,6 @@ func EnvConfig() (*Config, error) {
 }
 
 func (cnf *Config) apply(handler func(*Config, http.ResponseWriter, *http.Request)) http.HandlerFunc {
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		handler(cnf, w, r)
 	}

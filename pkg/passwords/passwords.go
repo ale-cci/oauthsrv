@@ -1,11 +1,11 @@
 package passwords
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"strings"
-	"crypto/sha256"
-	"encoding/base64"
 )
 
 type Algorithm = string
@@ -13,7 +13,6 @@ type Algorithm = string
 const (
 	SHA256 Algorithm = "sha256"
 )
-
 
 func New(rng io.Reader, password string) (string, error) {
 	salt := make([]byte, 12)
@@ -24,7 +23,6 @@ func New(rng io.Reader, password string) (string, error) {
 
 	return Encode(SHA256, base64.RawStdEncoding.EncodeToString(salt), password)
 }
-
 
 func Encode(alg Algorithm, salt, password string) (string, error) {
 	if alg != SHA256 {
@@ -38,7 +36,6 @@ func Encode(alg Algorithm, salt, password string) (string, error) {
 	pass := alg + "$" + salt + "$" + hash
 	return pass, nil
 }
-
 
 func Validate(hashed, plain string) error {
 	chunks := strings.Split(hashed, "$")

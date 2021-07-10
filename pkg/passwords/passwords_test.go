@@ -2,11 +2,10 @@ package passwords_test
 
 import (
 	"crypto/rand"
-	"github.com/ale-cci/oauthsrv/passwords"
+	"github.com/ale-cci/oauthsrv/pkg/passwords"
 	"strings"
 	"testing"
 )
-
 
 func TestNewPassword(t *testing.T) {
 	t.Run("Password should be validated without errors", func(t *testing.T) {
@@ -22,7 +21,7 @@ func TestNewPassword(t *testing.T) {
 	})
 
 	t.Run("Validate should return error when password differs", func(t *testing.T) {
-		tt := []struct{
+		tt := []struct {
 			Password, CheckPassword string
 		}{
 			{"test", "testo"},

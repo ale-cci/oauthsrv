@@ -15,6 +15,7 @@ type JWT struct {
 type JWTHead struct {
 	Alg string `json:"alg"`
 }
+
 type JWTBody map[string]string
 
 func (j *JWT) Encode(pk *rsa.PrivateKey) string {

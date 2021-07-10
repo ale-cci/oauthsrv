@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/ale-cci/oauthsrv/handlers"
+	"github.com/ale-cci/oauthsrv/pkg/handlers"
 )
 
 func main() {

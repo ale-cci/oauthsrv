@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"github.com/ale-cci/oauthsrv/passwords"
+	"github.com/ale-cci/oauthsrv/pkg/passwords"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"

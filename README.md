@@ -1,5 +1,9 @@
 ## OAuthSrv
 >
+### Contributing
+```sh
+$ git config core.hooksPath 'git-hooks'
+```
 
 ### Run Test suite
 ```sh
