@@ -2,7 +2,9 @@ package jwt
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -10,12 +12,14 @@ import (
 )
 
 type JWT struct {
-	Head *JWTHead
-	Body JWTBody
+	Head      *JWTHead
+	Body      JWTBody
+	Signature string
 }
+
 type JWTHead struct {
-	Alg string
-	Typ string
+	Alg string `json:"alg"`
+	Typ string `json:"typ"`
 }
 
 type JWTBody map[string]interface{}
@@ -65,5 +69,27 @@ func Decode(token string) (*JWT, error) {
 		return nil, err
 	}
 
-	return &JWT{&jwtHead, jwtBody}, nil
+	return &JWT{&jwtHead, jwtBody, ""}, nil
+}
+
+
+type PubKeyGetter func(kid string) (*rsa.PublicKey, error)
+
+func (j *JWT) Verify(fetchKey PubKeyGetter) error {
+	if j.Head.Alg == "none" {
+		return fmt.Errorf("Tokens with algorithm 'none' could not be verified")
+	}
+
+	pubKey, _ := fetchKey("")
+	signature, _ := base64.RawURLEncoding.DecodeString(j.Signature)
+
+	hasher := sha256.New()
+	bodyBytes, _ := json.Marshal(j.Body)
+	headBytes, _ := json.Marshal(j.Head)
+
+	payload := base64.RawStdEncoding.EncodeToString(headBytes) + "." + base64.RawStdEncoding.EncodeToString(bodyBytes)
+	hasher.Write([]byte(payload))
+	hash := hasher.Sum(nil)
+
+	return rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, hash[:], signature)
 }
