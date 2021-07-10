@@ -1,11 +1,11 @@
 package jwt
 
 import (
-	"strings"
-	"fmt"
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"strings"
 )
 
 type JWT struct {
@@ -18,7 +18,7 @@ type JWTHead struct {
 type JWTBody map[string]string
 
 func (j *JWT) Encode(pk *rsa.PrivateKey) string {
-	bytes, _ :=  json.Marshal(j.Body)
+	bytes, _ := json.Marshal(j.Body)
 	body := base64.RawURLEncoding.EncodeToString(bytes)
 	return "." + body + "."
 }
@@ -45,5 +45,5 @@ func Decode(token string) (*JWT, error) {
 	json.Unmarshal(headDecoded, &jwtHead)
 	json.Unmarshal(bodyDecoded, &jwtBody)
 
-	return &JWT{ &jwtHead, jwtBody}, nil
+	return &JWT{&jwtHead, jwtBody}, nil
 }

@@ -1,9 +1,9 @@
 package jwt_test
 
 import (
-	"testing"
-	"strings"
 	"github.com/ale-cci/oauthsrv/jwt"
+	"strings"
+	"testing"
 )
 
 func TestJWT(t *testing.T) {
@@ -85,4 +85,3 @@ func TestDecode(t *testing.T) {
 		}
 	})
 }
-
