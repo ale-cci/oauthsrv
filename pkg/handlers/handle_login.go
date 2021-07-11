@@ -4,6 +4,7 @@ import (
 	"github.com/ale-cci/oauthsrv/pkg/passwords"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"html/template"
 	"net/http"
 )
 
@@ -14,7 +15,15 @@ func handleLogin(cnf *Config, w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/continue", http.StatusFound)
 			return
 		}
-		w.WriteHeader(200)
+		t, err := template.ParseFiles("templates/login.tmpl")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := t.Execute(w, nil); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	} else {
 		username := r.FormValue("username")
 		password := r.FormValue("password")

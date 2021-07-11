@@ -12,8 +12,16 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 )
+
+func init() {
+	// cd to root directory for templates importing
+	if err := os.Chdir("../../"); err != nil {
+		panic(err)
+	}
+}
 
 func NewTestServer(cnf *handlers.Config) *httptest.Server {
 	router := http.NewServeMux()
