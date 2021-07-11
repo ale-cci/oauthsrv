@@ -3,6 +3,7 @@ package jwt
 import (
 	"bytes"
 	"crypto"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
@@ -24,22 +25,12 @@ type JWTHead struct {
 
 type JWTBody map[string]interface{}
 
-func (j *JWT) Encode(pk *rsa.PrivateKey) string {
-	bytes, _ := json.Marshal(j.Body)
-	body := base64.RawURLEncoding.EncodeToString(bytes)
-
-	headBytes, _ := json.Marshal(j.Head)
-	head := base64.RawURLEncoding.EncodeToString(headBytes)
-	return head + "." + body + "."
+func (j JWT) Encode(pk *rsa.PrivateKey) string {
+	payload, _ := j.SigPayload()
+	return payload + "."
 }
 
-func New(body JWTBody) *JWT {
-	return &JWT{
-		Body: body,
-	}
-}
-
-func parseChunk(chunk string, into interface{}) error {
+func decodeChunk(chunk string, into interface{}) error {
 	decodedChunk, err := base64.RawURLEncoding.DecodeString(chunk)
 
 	if err != nil {
@@ -61,35 +52,67 @@ func Decode(token string) (*JWT, error) {
 	var jwtHead JWTHead
 	var jwtBody JWTBody
 
-	if err := parseChunk(chunks[0], &jwtHead); err != nil {
+	if err := decodeChunk(chunks[0], &jwtHead); err != nil {
 		return nil, err
 	}
 
-	if err := parseChunk(chunks[1], &jwtBody); err != nil {
+	if err := decodeChunk(chunks[1], &jwtBody); err != nil {
 		return nil, err
 	}
 
 	return &JWT{&jwtHead, jwtBody, ""}, nil
 }
 
-
 type PubKeyGetter func(kid string) (*rsa.PublicKey, error)
 
-func (j *JWT) Verify(fetchKey PubKeyGetter) error {
+func (j *JWT) SigPayload() (string, error) {
+	headBytes, _ := json.Marshal(j.Head)
+	bodyBytes, _ := json.Marshal(j.Body)
+
+	encHead := base64.RawStdEncoding.EncodeToString(headBytes)
+	encBody := base64.RawStdEncoding.EncodeToString(bodyBytes)
+
+	return encHead + "." + encBody, nil
+}
+
+type PublicKeyStore interface {
+	PublicKey(alg, kid string) (*rsa.PublicKey, error)
+}
+
+func (j *JWT) Verify(ks PublicKeyStore) error {
 	if j.Head.Alg == "none" {
 		return fmt.Errorf("Tokens with algorithm 'none' could not be verified")
 	}
 
-	pubKey, _ := fetchKey("")
+	pubKey, _ := ks.PublicKey("", "")
 	signature, _ := base64.RawURLEncoding.DecodeString(j.Signature)
 
 	hasher := sha256.New()
-	bodyBytes, _ := json.Marshal(j.Body)
-	headBytes, _ := json.Marshal(j.Head)
-
-	payload := base64.RawStdEncoding.EncodeToString(headBytes) + "." + base64.RawStdEncoding.EncodeToString(bodyBytes)
+	payload, _ := j.SigPayload()
 	hasher.Write([]byte(payload))
 	hash := hasher.Sum(nil)
 
 	return rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, hash[:], signature)
+}
+
+type PrivateKeyStore interface {
+	PrivateKey(alg, kid string) (*rsa.PrivateKey, error)
+}
+
+// Calculates token signature, base64-urlencoded
+func (j *JWT) Sign(ks PrivateKeyStore) (string, error) {
+	hasher := sha256.New()
+	payload, _ := j.SigPayload()
+	hasher.Write([]byte(payload))
+	hash := hasher.Sum(nil)
+
+	privKey, err := ks.PrivateKey("", "")
+	if err != nil {
+		return "", err
+	}
+
+	signature, _ := rsa.SignPKCS1v15(rand.Reader, privKey, crypto.SHA256, hash[:])
+
+	b64signature := base64.RawURLEncoding.EncodeToString(signature)
+	return b64signature, nil
 }
