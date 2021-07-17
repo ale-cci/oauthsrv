@@ -260,4 +260,21 @@ func TestValidateJWT(t *testing.T) {
 			t.Errorf("Expected error, got %v", err)
 		}
 	})
+
+	t.Run("encoded tokens should end with a signature", func(t *testing.T) {
+		token := jwt.JWT{
+			Head: &jwt.JWTHead{ Alg: "RS256", Typ: "JWT"},
+			Body: jwt.JWTBody{},
+		}
+		sig, err := token.Sign(mks)
+		if err != nil {
+			t.Errorf("Unexpected error %v", err)
+		}
+		jwtStr := token.Encode(mks)
+		encoded_sign := strings.Split(jwtStr, ".")[2]
+
+		if sig != encoded_sign {
+			t.Errorf("want %q, got %q", sig, encoded_sign)
+		}
+	})
 }

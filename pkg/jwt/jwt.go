@@ -25,9 +25,10 @@ type JWTHead struct {
 
 type JWTBody map[string]interface{}
 
-func (j JWT) Encode(pk *rsa.PrivateKey) string {
+func (j JWT) Encode(ks PrivateKeyStore) string {
 	payload, _ := j.SigPayload()
-	return payload + "."
+	signature, _ := j.Sign(ks)
+	return payload + "." + signature
 }
 
 func decodeChunk(chunk string, into interface{}) error {
@@ -99,12 +100,17 @@ type PrivateKeyStore interface {
 	PrivateKey(alg, kid string) (*rsa.PrivateKey, error)
 }
 
+
 // Calculates token signature, base64-urlencoded
-func (j *JWT) Sign(ks PrivateKeyStore) (string, error) {
+func (j JWT) Sign(ks PrivateKeyStore) (string, error) {
 	hasher := sha256.New()
 	payload, _ := j.SigPayload()
 	hasher.Write([]byte(payload))
 	hash := hasher.Sum(nil)
+
+	if ks == nil {
+		return "", fmt.Errorf("PrivateKeystore not provided")
+	}
 
 	privKey, err := ks.PrivateKey("", "")
 	if err != nil {

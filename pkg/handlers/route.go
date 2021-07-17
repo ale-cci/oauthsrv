@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"net/url"
 )
 
 type Router interface {
@@ -13,7 +14,8 @@ func AddRoutes(cnf *Config, router Router) {
 	router.HandleFunc("/healthcheck", cnf.apply(handleHealthCheck))
 	router.HandleFunc("/login", cnf.apply(handleLogin))
 	router.HandleFunc("/oauth/v2/auth", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Location", "/")
+		continueTo := url.QueryEscape(r.RequestURI)
+		w.Header().Add("Location", "/login?continue=" + continueTo)
 		w.WriteHeader(http.StatusFound)
 	})
 
@@ -29,3 +31,8 @@ func handleHealthCheck(cnf *Config, w http.ResponseWriter, r *http.Request) {
 
 	w.Write([]byte("Ok!"))
 }
+
+
+// func withAuthentication(cnf *Config, w http.ResponseWriter, r *http.Request) func(cnf *Config, w http.ResponseWriter, r *http.Request) {
+// 	return nil
+// }
