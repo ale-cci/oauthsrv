@@ -100,7 +100,6 @@ type PrivateKeyStore interface {
 	PrivateKey(alg, kid string) (*rsa.PrivateKey, error)
 }
 
-
 // Calculates token signature, base64-urlencoded
 func (j JWT) Sign(ks PrivateKeyStore) (string, error) {
 	hasher := sha256.New()

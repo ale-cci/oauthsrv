@@ -263,7 +263,7 @@ func TestValidateJWT(t *testing.T) {
 
 	t.Run("encoded tokens should end with a signature", func(t *testing.T) {
 		token := jwt.JWT{
-			Head: &jwt.JWTHead{ Alg: "RS256", Typ: "JWT"},
+			Head: &jwt.JWTHead{Alg: "RS256", Typ: "JWT"},
 			Body: jwt.JWTBody{},
 		}
 		sig, err := token.Sign(mks)
