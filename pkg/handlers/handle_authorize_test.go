@@ -1,12 +1,10 @@
 package handlers_test
 
-
 import (
-	"testing"
-	"net/url"
 	"github.com/ale-cci/oauthsrv/pkg/handlers"
+	"net/url"
+	"testing"
 )
-
 
 func TestAuthorizeEndpoint(t *testing.T) {
 	cnf, _ := handlers.EnvConfig()
@@ -26,7 +24,6 @@ func TestAuthorizeEndpoint(t *testing.T) {
 		if err != nil {
 			t.Errorf("Unexpected error: %v", err)
 		}
-
 
 		got := redirectURL.RequestURI()
 

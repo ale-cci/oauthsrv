@@ -5,6 +5,8 @@ import (
 	"net/url"
 )
 
+type CnfHandlerFunc func(cnf *Config, w http.ResponseWriter, r *http.Request)
+
 type Router interface {
 	HandleFunc(pattern string, handler func(w http.ResponseWriter, r *http.Request))
 }
@@ -13,11 +15,13 @@ type Router interface {
 func AddRoutes(cnf *Config, router Router) {
 	router.HandleFunc("/healthcheck", cnf.apply(handleHealthCheck))
 	router.HandleFunc("/login", cnf.apply(handleLogin))
-	router.HandleFunc("/oauth/v2/auth", func(w http.ResponseWriter, r *http.Request) {
-		continueTo := url.QueryEscape(r.RequestURI)
-		w.Header().Add("Location", "/login?continue=" + continueTo)
-		w.WriteHeader(http.StatusFound)
-	})
+
+	router.HandleFunc("/oauth/v2/auth", cnf.apply(
+		Authorize(
+			func(cnf *Config, w http.ResponseWriter, r *http.Request) {
+			}),
+	),
+	)
 
 }
 
@@ -32,7 +36,10 @@ func handleHealthCheck(cnf *Config, w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Ok!"))
 }
 
-
-// func withAuthentication(cnf *Config, w http.ResponseWriter, r *http.Request) func(cnf *Config, w http.ResponseWriter, r *http.Request) {
-// 	return nil
-// }
+func Authorize(handler CnfHandlerFunc) CnfHandlerFunc {
+	return func(cnf *Config, w http.ResponseWriter, r *http.Request) {
+		continueTo := url.QueryEscape(r.RequestURI)
+		w.Header().Add("Location", "/login?continue="+continueTo)
+		w.WriteHeader(http.StatusFound)
+	}
+}
