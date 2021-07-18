@@ -71,7 +71,7 @@ func TestRoutedFunctions(t *testing.T) {
 	}
 
 	for i, tc := range tt {
-		name := fmt.Sprintf("[%d] GET %s should retur %d", i, tc.Endpoint, tc.Status)
+		name := fmt.Sprintf("[%d] GET %s should return %d", i, tc.Endpoint, tc.Status)
 
 		t.Run(name, func(t *testing.T) {
 			resp, err := client.Get(srv.URL + tc.Endpoint)

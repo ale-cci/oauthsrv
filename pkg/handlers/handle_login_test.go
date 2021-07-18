@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"github.com/ale-cci/oauthsrv/pkg/handlers"
+	"github.com/ale-cci/oauthsrv/pkg/jwt"
 	"github.com/ale-cci/oauthsrv/pkg/passwords"
 	"go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/net/publicsuffix"
@@ -173,6 +174,30 @@ func TestHandleLoginPost(t *testing.T) {
 					}
 				}
 			})
+		}
+	})
+
+	t.Run("successful login should set a valid jwt", func(t *testing.T) {
+		values := url.Values{
+			"username": {"test@email.com"},
+			"password": {"password"},
+		}
+		resp, err := client.PostForm(srv.URL+"/login?continue=%2Fx", values)
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+
+		var sid string
+		for _, cookie := range resp.Cookies() {
+			if cookie.Name == "sid" {
+				sid = cookie.Value
+				break
+			}
+		}
+
+		_, err = jwt.Decode(sid)
+		if err != nil {
+			t.Fatalf("Invalid jwt: %q", sid)
 		}
 	})
 }

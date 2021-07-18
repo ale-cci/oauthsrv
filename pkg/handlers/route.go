@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"github.com/ale-cci/oauthsrv/pkg/jwt"
+	"html/template"
 	"net/http"
 	"net/url"
 )
@@ -19,6 +21,12 @@ func AddRoutes(cnf *Config, router Router) {
 	router.HandleFunc("/oauth/v2/auth", cnf.apply(
 		Authorize(
 			func(cnf *Config, w http.ResponseWriter, r *http.Request) {
+				q := r.URL.Query()
+				if q.Get("client_id") == "" {
+					http.Error(w, "missing client id", http.StatusBadRequest)
+				}
+				t, _ := template.ParseFiles("templates/authorize.tmpl")
+				t.Execute(w, nil)
 			}),
 	),
 	)
@@ -38,8 +46,25 @@ func handleHealthCheck(cnf *Config, w http.ResponseWriter, r *http.Request) {
 
 func Authorize(handler CnfHandlerFunc) CnfHandlerFunc {
 	return func(cnf *Config, w http.ResponseWriter, r *http.Request) {
-		continueTo := url.QueryEscape(r.RequestURI)
-		w.Header().Add("Location", "/login?continue="+continueTo)
-		w.WriteHeader(http.StatusFound)
+		sid, err := r.Cookie("sid")
+		if err != nil && err != http.ErrNoCookie {
+			// do something
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		isValid := (err != http.ErrNoCookie)
+		if isValid {
+			_, tokenErr := jwt.Decode(sid.Value)
+			isValid = tokenErr == nil
+
+		}
+
+		if !isValid {
+			continueTo := url.QueryEscape(r.RequestURI)
+			http.Redirect(w, r, "/login?continue="+continueTo, http.StatusFound)
+		} else {
+			handler(cnf, w, r)
+		}
 	}
 }

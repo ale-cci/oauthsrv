@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/ale-cci/oauthsrv/pkg/jwt"
 	"github.com/ale-cci/oauthsrv/pkg/passwords"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -49,8 +50,9 @@ func handleLogin(cnf *Config, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.SetCookie(w, &http.Cookie{Name: "sid", Value: "1"})
+		sid := jwt.JWT{}.Encode(nil)
 
+		http.SetCookie(w, &http.Cookie{Name: "sid", Value: sid})
 		http.Redirect(w, r, afterLogin, http.StatusFound)
 	}
 }
