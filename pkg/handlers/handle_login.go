@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"html/template"
+	"log"
 	"net/http"
 )
 
@@ -16,12 +17,21 @@ func handleLogin(cnf *Config, w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/continue", http.StatusFound)
 			return
 		}
+
 		t, err := template.ParseFiles("templates/login.tmpl")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if err := t.Execute(w, nil); err != nil {
+
+		data := struct{ Error string }{}
+
+		errmsg, err := r.Cookie("error")
+		if err != http.ErrNoCookie {
+			data.Error = errmsg.Value
+		}
+
+		if err := t.Execute(w, data); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -34,7 +44,10 @@ func handleLogin(cnf *Config, w http.ResponseWriter, r *http.Request) {
 			Email    string `bson:"_id"`
 			Password string `bson:"password"`
 		}
-		err := cnf.Database.Collection("identities").FindOne(r.Context(), bson.D{{Key: "_id", Value: username}}).Decode(&identity)
+		err := cnf.Database.Collection("identities").FindOne(
+			r.Context(),
+			bson.D{{Key: "_id", Value: username}},
+		).Decode(&identity)
 
 		if err != nil {
 			if err != mongo.ErrNoDocuments {
@@ -46,6 +59,8 @@ func handleLogin(cnf *Config, w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := passwords.Validate(identity.Password, password); err != nil {
+			log.Println(err.Error())
+			http.SetCookie(w, &http.Cookie{Name: "error", Value: "Wrong username or password"})
 			http.Redirect(w, r, r.URL.RequestURI(), http.StatusFound)
 			return
 		}

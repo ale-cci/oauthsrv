@@ -1,14 +1,19 @@
 package handlers_test
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"crypto/rand"
 	"fmt"
 	"github.com/ale-cci/oauthsrv/pkg/handlers"
 	"github.com/ale-cci/oauthsrv/pkg/jwt"
 	"github.com/ale-cci/oauthsrv/pkg/passwords"
+	"github.com/kylelemons/godebug/diff"
 	"go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/net/publicsuffix"
+	"html/template"
+	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -233,4 +238,59 @@ func TestHandleLoginGet(t *testing.T) {
 			t.Errorf("want: %q, got: %q", want, got)
 		}
 	})
+}
+
+func TestHandleLoginReturnsErrorMessage(t *testing.T) {
+	cnf, _ := handlers.EnvConfig()
+	srv := NewTestServer(cnf)
+	defer srv.Close()
+
+	client := srv.Client()
+	client.Jar, _ = cookiejar.New(nil)
+
+	password, _ := passwords.New(rand.Reader, "password")
+	cnf.Database.Collection("identities").InsertOne(context.Background(), bson.D{
+		{Key: "_id", Value: "test@email.com"},
+		{Key: "password", Value: password},
+	})
+
+	t.Run("should print error message if credentials are not correct", func(t *testing.T) {
+		resp, err := client.PostForm(srv.URL+"/login?continue=%2Fcontinue", url.Values{
+			"username": {"test@email.com"},
+			"password": {"err"},
+		})
+
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		data := struct{ Error string }{"Wrong username or password"}
+		want, err := execTemplate("templates/login.tmpl", data)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		got, err := ioutil.ReadAll(resp.Body)
+
+		assertStringEquals(t, string(want), string(got))
+	})
+}
+
+func execTemplate(name string, data interface{}) ([]byte, error) {
+	tmpl := template.Must(template.ParseFiles("templates/login.tmpl"))
+
+	var body bytes.Buffer
+	buf := bufio.NewWriter(&body)
+
+	if err := tmpl.Execute(buf, data); err != nil {
+		return nil, err
+	}
+	buf.Flush()
+	return body.Bytes(), nil
+}
+
+func assertStringEquals(t *testing.T, want, got string) {
+	if got != want {
+		t.Errorf(diff.Diff(want, got))
+	}
 }
