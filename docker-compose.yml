@@ -23,9 +23,11 @@ services:
     image: mongo
     volumes:
       - mongo-data:/data/db
+      - ./initdb/:/docker-entrypoint-initdb.d/
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: pass
+      MONGO_INITDB_DATABASE: oidc
 
 volumes:
   mongo-data: {}
