@@ -1,5 +1,12 @@
 ## OAuthSrv
 >
+### Usage
+Default credentials
+```text
+Username: test@email.com
+Password: root
+```
+
 ### Contributing
 ```sh
 $ git config core.hooksPath 'git-hooks'
