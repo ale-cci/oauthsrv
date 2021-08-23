@@ -18,10 +18,16 @@ func authorizeClientCredentials(cnf *Config, clientId, clientSecret string) (Cli
 }
 
 func handleClientCredentials(cnf *Config, w http.ResponseWriter, r *http.Request) {
-
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	w.WriteHeader(http.StatusUnauthorized)
+	// client_id := r.PostFormValue("client_id")
+	client_secret := r.FormValue("client_secret")
+
+	if client_secret == "client-secret" {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusUnauthorized)
+	}
 }

@@ -2,7 +2,9 @@ package handlers_test
 
 import (
 	"context"
+	"crypto/rand"
 	"github.com/ale-cci/oauthsrv/pkg/handlers"
+	"github.com/ale-cci/oauthsrv/pkg/passwords"
 	"go.mongodb.org/mongo-driver/bson"
 	"gotest.tools/assert"
 	is "gotest.tools/assert/cmp"
@@ -19,9 +21,13 @@ func TestClientCredentials(t *testing.T) {
 
 	// TODO: create client application
 	client := srv.Client()
+
+	pass, err := passwords.New(rand.Reader, "client-secret")
+	assert.Assert(t, is.Nil(err))
+
 	cnf.Database.Collection("apps").InsertOne(context.Background(), bson.D{
 		{Key: "_id", Value: "client-id"},
-		{Key: "secret", Value: "client-secret"},
+		{Key: "secret", Value: pass},
 	})
 
 	urlPath := srv.URL + "/oauth/v2/auth" + "?" + url.Values{
@@ -41,7 +47,7 @@ func TestClientCredentials(t *testing.T) {
 
 	t.Run("should return 401 if credentials are wrong", func(t *testing.T) {
 		resp, err := client.PostForm(urlPath, url.Values{
-			"client_id":     {"test"},
+			"client_id":     {"client-id"},
 			"client_secret": {"test"},
 		})
 		assert.Assert(t, is.Nil(err))
@@ -50,5 +56,14 @@ func TestClientCredentials(t *testing.T) {
 		got := resp.StatusCode
 
 		assert.Equal(t, expect, got)
+	})
+
+	t.Run("should return jwt if credentials are correct", func(t *testing.T) {
+		resp, err := client.PostForm(urlPath, url.Values{
+			"client_id":     {"client-id"},
+			"client_secret": {"client-secret"},
+		})
+		assert.Assert(t, is.Nil(err))
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
 	})
 }
