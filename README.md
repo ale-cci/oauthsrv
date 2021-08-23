@@ -16,3 +16,10 @@ $ git config core.hooksPath 'git-hooks'
 ```sh
 $ docker-compose run --rm oauthsrv go test ./...
 ```
+
+### MongoDB schema:
+```
+oidc
+ - identities: list of registered users
+ - apps: registered applications (with client secret + client id)
+```
