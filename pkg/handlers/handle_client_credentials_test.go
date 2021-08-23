@@ -3,11 +3,13 @@ package handlers_test
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"github.com/ale-cci/oauthsrv/pkg/handlers"
 	"github.com/ale-cci/oauthsrv/pkg/passwords"
 	"go.mongodb.org/mongo-driver/bson"
 	"gotest.tools/assert"
 	is "gotest.tools/assert/cmp"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"testing"
@@ -22,13 +24,10 @@ func TestClientCredentials(t *testing.T) {
 	// TODO: create client application
 	client := srv.Client()
 
-	pass, err := passwords.New(rand.Reader, "client-secret")
-	assert.Assert(t, is.Nil(err))
+	err := initApps(cnf)
+	t.Cleanup(deinitApps(cnf))
 
-	cnf.Database.Collection("apps").InsertOne(context.Background(), bson.D{
-		{Key: "_id", Value: "client-id"},
-		{Key: "secret", Value: pass},
-	})
+	assert.Assert(t, is.Nil(err))
 
 	urlPath := srv.URL + "/oauth/v2/auth" + "?" + url.Values{
 		"grant_type": {"client_credentials"},
@@ -63,7 +62,29 @@ func TestClientCredentials(t *testing.T) {
 			"client_id":     {"client-id"},
 			"client_secret": {"client-secret"},
 		})
-		assert.Assert(t, is.Nil(err))
+		assert.NilError(t, err)
 		assert.Equal(t, resp.StatusCode, http.StatusOK)
+		body, err := ioutil.ReadAll(resp.Body)
+		assert.NilError(t, err)
+		var jsonBody struct {
+			jwt string
+		}
+		err = json.Unmarshal(body, &jsonBody)
+		assert.NilError(t, err)
 	})
+}
+
+func initApps(cnf *handlers.Config) error {
+	pass, err := passwords.New(rand.Reader, "client-secret")
+	cnf.Database.Collection("apps").InsertOne(context.Background(), bson.D{
+		{Key: "_id", Value: "client-id"},
+		{Key: "client_secret", Value: pass},
+	})
+	return err
+}
+
+func deinitApps(cnf *handlers.Config) func() {
+	return func() {
+		cnf.Database.Collection("apps").Drop(context.Background())
+	}
 }

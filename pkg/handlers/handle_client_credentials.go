@@ -3,31 +3,32 @@
 package handlers
 
 import (
-	_ "go.mongodb.org/mongo-driver/bson"
-	_ "go.mongodb.org/mongo-driver/mongo"
+	"github.com/ale-cci/oauthsrv/pkg/passwords"
+	"go.mongodb.org/mongo-driver/bson"
 	"net/http"
 )
-
-type Client int
-
-// Check database client credentials
-func authorizeClientCredentials(cnf *Config, clientId, clientSecret string) (Client, error) {
-	// cnf.Database.Collection("applications")
-
-	return 0, nil
-}
 
 func handleClientCredentials(cnf *Config, w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	// client_id := r.PostFormValue("client_id")
+	client_id := r.FormValue("client_id")
 	client_secret := r.FormValue("client_secret")
 
-	if client_secret == "client-secret" {
-		w.WriteHeader(http.StatusOK)
-	} else {
+	var app struct {
+		Id     string `bson:"_id"`
+		Secret string `bson:"client_secret"`
+	}
+
+	err := cnf.Database.Collection("apps").FindOne(r.Context(), bson.D{
+		{Key: "_id", Value: client_id},
+	}).Decode(&app)
+
+	if err != nil || passwords.Validate(app.Secret, client_secret) != nil {
 		w.WriteHeader(http.StatusUnauthorized)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("{\"jwt\": \"test\"}"))
 	}
 }
