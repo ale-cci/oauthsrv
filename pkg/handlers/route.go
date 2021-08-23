@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"github.com/ale-cci/oauthsrv/pkg/jwt"
-	"html/template"
 	"net/http"
 	"net/url"
 )
@@ -10,26 +9,22 @@ import (
 type CnfHandlerFunc func(cnf *Config, w http.ResponseWriter, r *http.Request)
 
 type Router interface {
-	HandleFunc(pattern string, handler func(w http.ResponseWriter, r *http.Request))
+	HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request))
 }
 
 // Register all handlers to a given router
 func AddRoutes(cnf *Config, router Router) {
-	router.HandleFunc("/healthcheck", cnf.apply(handleHealthCheck))
-	router.HandleFunc("/login", cnf.apply(handleLogin))
-
-	router.HandleFunc("/oauth/v2/auth", cnf.apply(
-		Authorize(
-			func(cnf *Config, w http.ResponseWriter, r *http.Request) {
-				q := r.URL.Query()
-				if q.Get("client_id") == "" {
-					http.Error(w, "missing client id", http.StatusBadRequest)
-				}
-				t, _ := template.ParseFiles("templates/authorize.tmpl")
-				t.Execute(w, nil)
-			}),
-	),
-	)
+	routes := []struct {
+		Endpoint string
+		Handler  CnfHandlerFunc
+	}{
+		{"/healthcheck", handleHealthCheck},
+		{"/login", handleLogin},
+		{"/oauth/v2/auth", handleAuth},
+	}
+	for _, route := range routes {
+		router.HandleFunc(route.Endpoint, cnf.apply(route.Handler))
+	}
 
 }
 
@@ -44,6 +39,8 @@ func handleHealthCheck(cnf *Config, w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Ok!"))
 }
 
+// Authorization for server-side responses, if the request is invalid,
+// redirect to login page
 func Authorize(handler CnfHandlerFunc) CnfHandlerFunc {
 	return func(cnf *Config, w http.ResponseWriter, r *http.Request) {
 		sid, err := r.Cookie("sid")

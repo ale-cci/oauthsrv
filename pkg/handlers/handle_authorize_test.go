@@ -20,7 +20,7 @@ func TestAuthorizeFromGuest(t *testing.T) {
 	defer srv.Close()
 
 	client := NoFollowRedirectClient(srv)
-	requestPath := "/oauth/v2/auth"
+	requestPath := "/oauth/v2/auth?grant_type=code"
 
 	t.Run("should redirect to login if user is not authorized", func(t *testing.T) {
 		resp, err := client.Get(srv.URL + requestPath)
@@ -93,10 +93,10 @@ func TestAuthorizeEndpoint(t *testing.T) {
 
 	t.Run("should return 200 if user is authenticated", func(t *testing.T) {
 		requestPath := "/oauth/v2/auth?" + url.Values{
-			"client_id":     {"something"},
-			"redirect_uri":  {""},
-			"response_type": {"code"},
-			"scope":         {""},
+			"client_id":    {"something"},
+			"redirect_uri": {""},
+			"grant_type":   {"code"},
+			"scope":        {""},
 		}.Encode()
 
 		resp, err := client.Get(srv.URL + requestPath)
@@ -113,9 +113,9 @@ func TestAuthorizeEndpoint(t *testing.T) {
 
 	t.Run("should return 400 if not all arguments were provided", func(t *testing.T) {
 		requestPath := "/oauth/v2/auth?" + url.Values{
-			"redirect_uri":  {""},
-			"response_type": {"code"},
-			"scope":         {""},
+			"redirect_uri": {""},
+			"grant_type":   {"code"},
+			"scope":        {""},
 		}.Encode()
 
 		resp, err := client.Get(srv.URL + requestPath)
@@ -145,7 +145,8 @@ func TestAuthorizeEndpoint(t *testing.T) {
 		buf.Flush()
 
 		requestPath := "/oauth/v2/auth?" + url.Values{
-			"client_id": {"-"},
+			"client_id":  {"-"},
+			"grant_type": {"code"},
 		}.Encode()
 		resp, err := client.Get(srv.URL + requestPath)
 

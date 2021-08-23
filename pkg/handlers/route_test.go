@@ -66,7 +66,7 @@ func TestRoutedFunctions(t *testing.T) {
 		Endpoint string
 		Status   int
 	}{
-		{"/oauth/v2/auth", 302},
+		{"/oauth/v2/auth?grant_type=code", 302},
 		{"/login", 200},
 	}
 
