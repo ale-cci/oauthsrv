@@ -6,6 +6,7 @@ import (
 	"github.com/ale-cci/oauthsrv/pkg/handlers"
 	"github.com/ale-cci/oauthsrv/pkg/jwt"
 	"github.com/kylelemons/godebug/diff"
+	"gotest.tools/assert"
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -158,5 +159,15 @@ func TestAuthorizeEndpoint(t *testing.T) {
 		if strGot != strWant {
 			t.Errorf(diff.Diff(strWant, strGot))
 		}
+	})
+
+	t.Run("should return 400 if grant type is not registered", func(t *testing.T) {
+		reqPath := "/oauth/v2/auth?" + url.Values{
+			"grant_type": {"random"},
+		}.Encode()
+
+		resp, err := client.PostForm(srv.URL+reqPath, url.Values{})
+		assert.NilError(t, err)
+		assert.Equal(t, resp.StatusCode, http.StatusBadRequest)
 	})
 }
