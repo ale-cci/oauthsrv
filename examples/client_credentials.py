@@ -14,7 +14,8 @@ client_secret = '<MY-CLIENT-PASSWORD>'
 def main():
     resp = requests.post('http://localhost:8080/oauth/v2/auth?grant_type=client_credentials', data={
         'client_id': client_id,
-        'client_secret': client_secret
+        'client_secret': client_secret,
+        'scope': '*' # retrieve all the scopes
     })
 
     assert resp.status_code == 200, f'{resp.status_code} != 200'

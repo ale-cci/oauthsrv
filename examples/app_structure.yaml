@@ -1,0 +1,57 @@
+# Project configuration
+---
+users:
+  - # User authenticates with email and password, each user could create one or
+    # more applications, named clients.
+    # Each client is owned by a group of users
+    email: 'user-email'
+    password: 'user-password'
+    groups: ['basic-user']
+
+---
+# Table containing the list of client applications registered in oauthsrv
+# client is owned by ones who are in the `<client-id>:admin` group
+# client specific groups are generated using the following notation:
+# <client-id>:<group-role>, ex. for the client with client_id=AS12,
+# there could be the following groups: `AS12:admin`, `AS12:users`, `AS12:public`
+# Group that are not containing `:` are called generic groups
+clients:
+  - # Example client app configuration
+
+    # Content displayied on the authorization page
+    nome: 'Client name'
+    description: 'client desription could be empty'
+    color: '#ffffff'
+    logo: '<a square image>'
+
+
+    # Credentials required for the jwt exchange
+    client_id: 'the-client-id'
+    client_secret: 'the-client-secret'
+
+    # List of allowed redirect uris
+    # Redirects could be specified as regex, and could be restricted
+    # to use only a list of `grant_types`
+    redirect_uris:
+      - url: http://test2.com
+        grant_types: [ 'code' ]
+
+---
+# A scope identify a permission assigned on a group of users.
+# Scopes are automatically inserted in a jwt.
+# A scope is inserted if matches the key `scopes`, in the http request data
+scopes:
+  - # scope pattern, when matched the scope is added to the jwt
+    pattern: "register:(*):(*)"
+
+    # scope could be restricted to a list of groups
+    groups:
+      - public
+      - admin
+
+    # what the scope adds to the final jwt
+    grant:
+      access:
+        - type: "repository"
+          name: ""
+          actions: [ \2 ]
