@@ -3,6 +3,8 @@
 package handlers
 
 import (
+	"encoding/json"
+	"github.com/ale-cci/oauthsrv/pkg/jwt"
 	"github.com/ale-cci/oauthsrv/pkg/passwords"
 	"go.mongodb.org/mongo-driver/bson"
 	"net/http"
@@ -28,7 +30,24 @@ func handleClientCredentials(cnf *Config, w http.ResponseWriter, r *http.Request
 	if err != nil || passwords.Validate(app.Secret, client_secret) != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 	} else {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("{\"jwt\": \"test\"}"))
+		token := jwt.JWT{
+			Head: &jwt.JWTHead{
+				Typ: "JWT",
+				Alg: "none",
+			},
+			Body: jwt.JWTBody{
+				"sub": client_id,
+			},
+		}
+
+		jsonBody, err := json.Marshal(struct {
+			Jwt string `json:"jwt"`
+		}{token.Encode(nil)})
+
+		if err != nil {
+			http.Error(w, "unable to build jwt", http.StatusInternalServerError)
+		} else {
+			w.Write(jsonBody)
+		}
 	}
 }

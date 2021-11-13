@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"github.com/ale-cci/oauthsrv/pkg/handlers"
+	"github.com/ale-cci/oauthsrv/pkg/jwt"
 	"github.com/ale-cci/oauthsrv/pkg/passwords"
 	"go.mongodb.org/mongo-driver/bson"
 	"gotest.tools/assert"
@@ -67,10 +68,25 @@ func TestClientCredentials(t *testing.T) {
 		body, err := ioutil.ReadAll(resp.Body)
 		assert.NilError(t, err)
 		var jsonBody struct {
-			jwt string
+			Jwt string `json:"jwt"`
 		}
 		err = json.Unmarshal(body, &jsonBody)
 		assert.NilError(t, err)
+
+		t.Run("jwt is valid", func(t *testing.T) {
+			t.Logf("Value of jwt: %q", jsonBody.Jwt)
+			jwt, err := jwt.Decode(jsonBody.Jwt)
+			assert.NilError(t, err)
+
+			t.Run("should contain valid head claims", func(t *testing.T) {
+				assert.Equal(t, jwt.Head.Typ, "JWT")
+				assert.Assert(t, jwt.Head.Alg != "")
+			})
+			t.Run("should contain valid body claims", func(t *testing.T) {
+				assert.Equal(t, jwt.Body["sub"], "client-id")
+			})
+		})
+
 	})
 }
 
