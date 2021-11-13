@@ -80,7 +80,7 @@ func TestClientCredentials(t *testing.T) {
 
 			t.Run("should contain valid head claims", func(t *testing.T) {
 				assert.Equal(t, jwt.Head.Typ, "JWT")
-				assert.Assert(t, jwt.Head.Alg != "")
+				assert.Equal(t, jwt.Head.Alg, "none")
 			})
 			t.Run("should contain valid body claims", func(t *testing.T) {
 				assert.Equal(t, jwt.Body["sub"], "client-id")

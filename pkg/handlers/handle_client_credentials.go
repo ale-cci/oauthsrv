@@ -36,6 +36,7 @@ func handleClientCredentials(cnf *Config, w http.ResponseWriter, r *http.Request
 				Alg: "none",
 			},
 			Body: jwt.JWTBody{
+				// uniquely identifies the user
 				"sub": client_id,
 			},
 		}
