@@ -5,7 +5,6 @@ services:
     image: oauthsrv:0.1
     build:
       context: .
-      dockerfile: docker/Dockerfile
       target: testing
     volumes:
       - ./:/home/oauthsrv
