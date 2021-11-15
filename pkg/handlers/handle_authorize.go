@@ -21,8 +21,7 @@ func handleAuth(cnf *Config, w http.ResponseWriter, r *http.Request) {
 		handleClientCredentials(cnf, w, r)
 		break
 	case "password":
-		// handleGrantPassword(cnf, w, r)
-		http.Error(w, "Nope", http.StatusUnauthorized)
+		handleGrantPassword(cnf, w, r)
 		break
 	default:
 		http.Error(w, "Grant type not found", http.StatusBadRequest)
