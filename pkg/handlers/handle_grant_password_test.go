@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/ale-cci/oauthsrv/pkg/handlers"
+	"github.com/ale-cci/oauthsrv/pkg/jwt"
 	"github.com/ale-cci/oauthsrv/pkg/passwords"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -94,6 +95,24 @@ func TestHandleAuthPassword(t *testing.T) {
 		}
 
 		assert.Equal(t, resp.StatusCode, http.StatusOK)
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Errorf("Unable to read response body: %v", err)
+		}
+
+		var fields map[string]string
+		err = json.Unmarshal(body, &fields)
+		if err != nil {
+			t.Errorf("Unable to decode body as json: %v", err)
+		}
+
+		_, err = jwt.Decode(fields["access_token"])
+		if err != nil {
+			t.Logf("Token JWT: %q", fields["access_token"])
+			t.Errorf("Unable to read jwt: %v", err)
+		}
+
 	})
 
 }
