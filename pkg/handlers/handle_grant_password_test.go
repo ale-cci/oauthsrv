@@ -13,6 +13,7 @@ import (
 	"github.com/ale-cci/oauthsrv/pkg/handlers"
 	"github.com/ale-cci/oauthsrv/pkg/passwords"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"gotest.tools/assert"
 )
 
@@ -23,6 +24,17 @@ func TestHandleAuthPassword(t *testing.T) {
 
 	client := NoFollowRedirectClient(srv)
 	requestPath := "/oauth/v2/auth?grant_type=password"
+
+	password, _ := passwords.New(rand.Reader, "test")
+	_, err := cnf.Database.Collection("identities").UpdateOne(
+		context.Background(),
+		bson.D{{Key: "_id", Value: "test-grant-password@email.com"}},
+		bson.D{{"$set", bson.D{{"password", password}}}},
+		options.Update().SetUpsert(true),
+	)
+	if err != nil {
+		log.Fatalf("Unepected error while inserting new user: %v", err)
+	}
 
 	t.Run("only post request should be allowed", func(t *testing.T) {
 		resp, err := client.Get(srv.URL + requestPath)
@@ -48,8 +60,8 @@ func TestHandleAuthPassword(t *testing.T) {
 	})
 	t.Run("incorrect credentials should return 401", func(t *testing.T) {
 		resp, err := client.PostForm(srv.URL+requestPath, url.Values{
-			"username": {"wrong@email.com"},
-			"password": {"root"},
+			"username": {"test-grant-password@email.com"},
+			"password": {"wrong-password"},
 		})
 
 		if err != nil {
@@ -73,17 +85,8 @@ func TestHandleAuthPassword(t *testing.T) {
 
 	t.Run("correct credentials should return jwt", func(t *testing.T) {
 		// add user to db
-		password, _ := passwords.New(rand.Reader, "test")
-		cnf.Database.Collection("identities").InsertOne(
-			context.Background(),
-			bson.D{
-				{Key: "_id", Value: "test@email.com"},
-				{Key: "password", Value: password},
-			},
-		)
-
 		resp, err := client.PostForm(srv.URL+requestPath, url.Values{
-			"username": {"test@email.com"},
+			"username": {"test-grant-password@email.com"},
 			"password": {"test"},
 		})
 		if err != nil {
@@ -92,4 +95,5 @@ func TestHandleAuthPassword(t *testing.T) {
 
 		assert.Equal(t, resp.StatusCode, http.StatusOK)
 	})
+
 }

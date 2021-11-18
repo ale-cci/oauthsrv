@@ -18,16 +18,8 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"testing"
 )
-
-func init() {
-	// cd to root directory for templates importing
-	if err := os.Chdir("../../"); err != nil {
-		panic(err)
-	}
-}
 
 func NewTestServer(cnf *handlers.Config) *httptest.Server {
 	router := http.NewServeMux()
@@ -55,10 +47,13 @@ func TestHandleLoginPost(t *testing.T) {
 	client := NoFollowRedirectClient(srv)
 
 	password, _ := passwords.New(rand.Reader, "password")
-	cnf.Database.Collection("identities").InsertOne(context.Background(), bson.D{
+	_, err := cnf.Database.Collection("identities").InsertOne(context.Background(), bson.D{
 		{Key: "_id", Value: "test@email.com"},
 		{Key: "password", Value: password},
 	})
+	if err != nil {
+		t.Fatalf("Unable to insert test user: %v", err)
+	}
 
 	t.Run("should allow authentication only when username and password matches", func(t *testing.T) {
 		tt := []struct {

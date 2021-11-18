@@ -3,12 +3,24 @@ package handlers_test
 import (
 	"context"
 	"github.com/ale-cci/oauthsrv/pkg/handlers"
+	"log"
 	"os"
 	"testing"
 )
 
 func init() {
 	os.Setenv("DB_NAME", "test-oidc")
+	// cd to root directory for templates importing
+	if err := os.Chdir("../../"); err != nil {
+		panic(err)
+	}
+
+	// Cleanup test database
+	cfg, err := handlers.EnvConfig()
+	if err != nil {
+		log.Fatalf("Unable to get env-config: %v", err)
+	}
+	cfg.Database.Drop(context.Background())
 }
 
 func TestEnvConfig(t *testing.T) {

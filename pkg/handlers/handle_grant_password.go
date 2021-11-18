@@ -2,6 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
+	"github.com/ale-cci/oauthsrv/pkg/passwords"
+	"go.mongodb.org/mongo-driver/bson"
+	"log"
 	"net/http"
 )
 
@@ -18,9 +21,27 @@ func handleGrantPassword(cnf *Config, w http.ResponseWriter, r *http.Request) {
 	}
 
 	username := r.FormValue("username")
-	// password := r.FormValue("password")
+	password := r.FormValue("password")
 
-	if username == "test@email.com" {
+	var identity struct {
+		Email    string `bson:"_id"`
+		Password string `bson:"password"`
+	}
+
+	err := cnf.Database.Collection("identities").FindOne(
+		r.Context(),
+		bson.D{{"_id", username}},
+	).Decode(&identity)
+
+	if err == nil {
+		err = passwords.Validate(
+			identity.Password,
+			password,
+		)
+		log.Printf("Password checked %s, %s", identity.Password, password)
+	}
+
+	if err == nil {
 		w.WriteHeader(http.StatusOK)
 	} else {
 		w.WriteHeader(http.StatusUnauthorized)
