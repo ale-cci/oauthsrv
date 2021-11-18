@@ -2,7 +2,7 @@
 FROM alpine/openssl as keys
 WORKDIR /root
 RUN set -ex ; \
-    openssl genrsa -des3 -out private.pem 2048 ;\
+    openssl genrsa -out private.pem 2048 ;\
     openssl rsa -in private.pem -outform PEM -pubout -out public.pem
 
 #
