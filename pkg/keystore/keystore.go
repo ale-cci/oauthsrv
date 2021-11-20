@@ -6,7 +6,9 @@ import (
 	"fmt"
 )
 
-type TempKeystore struct{}
+type TempKeystore struct {
+	Keys map[string](*rsa.PrivateKey)
+}
 
 type PrivateKeyInfo struct {
 	Alg        string
@@ -21,13 +23,26 @@ func (ks *TempKeystore) GetSigningKey(alg string) (*PrivateKeyInfo, error) {
 		return nil, fmt.Errorf("Unable to generate private key: %v", err)
 	}
 
+	kid := "1"
+	ks.Keys[kid] = pk
+
 	return &PrivateKeyInfo{
 		Alg:        alg,
-		KeyID:      "1", // TODO: random UUID
+		KeyID:      kid, // TODO: random UUID
 		PrivateKey: pk,
 	}, nil
 }
 
+func (ks *TempKeystore) PublicKey(kid string) (*rsa.PublicKey, error) {
+	return &ks.Keys[kid].PublicKey, nil
+}
+
+func (ks *TempKeystore) PrivateKey(kid string) (*rsa.PrivateKey, error) {
+	return ks.Keys[kid], nil
+}
+
 func NewTempKeystore() (*TempKeystore, error) {
-	return &TempKeystore{}, nil
+	return &TempKeystore{
+		Keys: make(map[string](*rsa.PrivateKey)),
+	}, nil
 }
