@@ -1,0 +1,127 @@
+<!doctype HTML>
+<html>
+  <head>
+    <title> OAuthSrv | Login </title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet"> -->
+    <style>
+      html {
+        font-size: 14px;
+        font-family: system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif,'Apple Color Emoji','Segoe UI Emoji';
+        color: rgb(37, 37, 37)
+      }
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      .hero-container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        background-color: rgb(243, 244, 246);
+        justify-content: center;
+        align-items: center;
+        font-size: 1rem;
+        /* line-height: 1.25rem; */
+      }
+      .login-box {
+        max-width: 20rem;
+        width: 100%;
+        border-radius: 2px;
+        border: solid 1px rgb(229, 231, 235);
+        background-color: #fff;
+        padding: 2rem;
+        box-shadow: rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 4px 6px -1px, rgba(0, 0, 0, 0.06) 0px 2px 4px -1px;
+      }
+      .block {
+        box-sizing: border-box;
+        margin-bottom: 1rem;
+      }
+      .block label {
+        box-sizing: border-box;
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+      }
+      .block input, .block button {
+        box-sizing: border-box;
+        display: block;
+        width: 100%;
+        appearance: none;
+        border: solid 1px rgb(229, 231, 235);
+        padding: .75rem;
+        border-radius: 2px;
+        margin-bottom: 0.5rem;
+      }
+
+      .block button {
+        background-color: rgb(84, 134, 236);
+        color: #fff
+      }
+
+      .block input:focus, .block button:focus {
+        outline: none;
+        border: solid 1px rgb(84, 134, 236);
+        box-shadow: 0 0 0 2px rgba(84, 135, 236, 0.527);
+      }
+
+      .block button:hover {
+        background-color: rgb(44, 106, 228);
+      }
+
+      .block.login-button {
+        margin-top: 2rem;
+      }
+
+      .small-centered-text {
+        display: block;
+        text-align: center;
+        font-size: .675rem;
+      }
+
+      a.small-centered-text {
+        text-decoration: none;
+        color: inherit;
+      }
+
+      a.small-centered-text:hover {
+        text-decoration: underline;
+      }
+
+
+    </style>
+  </head>
+  <body>
+    <div class="hero-container">
+      <div class="login-box">
+        <form method="POST">
+          <div class="block">
+            <label for="username">
+              Username
+            </label>
+            <input id="username" type="text" placeholder="" name="username">
+          </div>
+          <div class="block">
+            <label for="password">
+              Password
+            </label>
+            <input id="password" type="password" name="password" placeholder="">
+          </div>
+          <div class="block login-button">
+            <button type="submit">
+              Sign In
+            </button>
+            <a a href="#" class="small-centered-text">
+              Forgot password?
+            </a>
+          </div>
+        </form>
+      </div>
+      <p class="small-centered-text">
+        &copy;2020 Acme Corp. All rights reserved.
+        {{ .Error }}
+      </p>
+    </div>
+  </body>
+</html>
