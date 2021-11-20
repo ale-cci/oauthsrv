@@ -18,6 +18,25 @@ services:
     depends_on:
       - mongo
 
+  oauthsrv-test:
+    image: oauthsrv:0.1
+    command:
+      - 'watcher'
+      - '-dotfiles=false'
+      - '-recursive=true'
+      - '-keepalive'
+      - '-cmd=go test ./...'
+      - ./
+    depends_on:
+      - oauthsrv
+      - mongo
+    volumes:
+      - ./:/home/oauthsrv
+    environment:
+      PORT: 8080
+      MONGO_CONNSTR: 'mongodb://root:pass@mongo:27017'
+      DB_NAME: 'oidc-test'
+
   mongo:
     image: mongo
     volumes:

@@ -21,8 +21,8 @@ RUN apk add --update ${test_dependencies}
 WORKDIR /home/oauthsrv/
 
 USER oauthsrv
+RUN go get -u github.com/radovskyb/watcher/...
 COPY ./go.mod ./go.sum ./
 RUN go mod download
 
 CMD ["go", "run", "oauthsrv.go"]
-
