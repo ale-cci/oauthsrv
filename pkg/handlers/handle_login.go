@@ -18,7 +18,7 @@ func handleLogin(cnf *Config, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		t, err := template.ParseFiles("templates/login.html")
+		t, err := template.ParseFiles("templates/login.tmpl")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
