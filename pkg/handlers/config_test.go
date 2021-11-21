@@ -54,7 +54,7 @@ func TestEnvConfig(t *testing.T) {
 		cfg, err := handlers.EnvConfig()
 		assert.NilError(t, err)
 
-		info, err := cfg.Keystore.GetSigningKey("HSRSA256")
+		info, err := cfg.Keystore.GetSigningKey("HS256")
 		assert.NilError(t, err)
 		assert.Check(t, info != nil)
 	})

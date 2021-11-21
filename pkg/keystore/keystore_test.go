@@ -64,13 +64,22 @@ func TestKeystore(t *testing.T) {
 		ks1, err := keystore.NewTempKeystore()
 		assert.NilError(t, err)
 
-		key1, err := ks1.GetSigningKey("HSRSA256")
+		key1, err := ks1.GetSigningKey("HS256")
 		assert.NilError(t, err)
 
 		ks2, err := keystore.NewTempKeystore()
-		key2, err := ks2.GetSigningKey("HSRSA256")
+		key2, err := ks2.GetSigningKey("HS256")
 		assert.NilError(t, err)
 
 		assert.Check(t, key1.KeyID != key2.KeyID)
+	})
+
+	t.Run("should return error if signing algorithm is not recognized", func(t *testing.T) {
+		ks, err := keystore.NewTempKeystore()
+		assert.NilError(t, err)
+
+		info, err := ks.GetSigningKey("HSRSA257")
+		assert.Check(t, err != nil)
+		assert.Check(t, info == nil)
 	})
 }

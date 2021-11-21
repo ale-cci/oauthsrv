@@ -40,6 +40,9 @@ type PrivateKeyInfo struct {
  * rotate.
  */
 func (ks *TempKeystore) GetSigningKey(alg string) (*PrivateKeyInfo, error) {
+	if alg != "HS256" {
+		return nil, fmt.Errorf("Signing algorithm not recognize")
+	}
 	if len(ks.Keys) > 0 {
 		for _, value := range ks.Keys {
 			return value, nil
