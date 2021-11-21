@@ -16,7 +16,7 @@ import (
  * When the application shuts off, all the keys are lost.
  */
 type TempKeystore struct {
-	Keys map[string](*rsa.PrivateKey)
+	Keys map[string](*PrivateKeyInfo)
 }
 
 type PrivateKeyInfo struct {
@@ -32,6 +32,12 @@ type PrivateKeyInfo struct {
  * rotate.
  */
 func (ks *TempKeystore) GetSigningKey(alg string) (*PrivateKeyInfo, error) {
+	if len(ks.Keys) > 0 {
+		for _, value := range ks.Keys {
+			return value, nil
+		}
+	}
+
 	pk, err := rsa.GenerateKey(rand.Reader, 2096)
 
 	if err != nil {
@@ -39,31 +45,32 @@ func (ks *TempKeystore) GetSigningKey(alg string) (*PrivateKeyInfo, error) {
 	}
 
 	kid := "1"
-	ks.Keys[kid] = pk
-
-	return &PrivateKeyInfo{
+	keyInfo := &PrivateKeyInfo{
 		Alg:        alg,
 		KeyID:      kid, // TODO: random UUID
 		PrivateKey: pk,
-	}, nil
+	}
+	ks.Keys[kid] = keyInfo
+
+	return keyInfo, nil
 }
 
 /**
  * Fetch a private key given it's key id
  */
 func (ks *TempKeystore) PublicKey(kid string) (*rsa.PublicKey, error) {
-	return &ks.Keys[kid].PublicKey, nil
+	return &ks.Keys[kid].PrivateKey.PublicKey, nil
 }
 
 /**
  * Fetch a public key given it's key id
  */
 func (ks *TempKeystore) PrivateKey(kid string) (*rsa.PrivateKey, error) {
-	return ks.Keys[kid], nil
+	return ks.Keys[kid].PrivateKey, nil
 }
 
 func NewTempKeystore() (*TempKeystore, error) {
 	return &TempKeystore{
-		Keys: make(map[string](*rsa.PrivateKey)),
+		Keys: make(map[string](*PrivateKeyInfo)),
 	}, nil
 }

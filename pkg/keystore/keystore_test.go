@@ -45,4 +45,18 @@ func TestKeystore(t *testing.T) {
 
 		assert.Check(t, privKey == pkInfo.PrivateKey)
 	})
+
+	t.Run("Consecutive calls to GetSigningKey should return same key", func(t *testing.T) {
+		ks, err := keystore.NewTempKeystore()
+		assert.NilError(t, err)
+
+		fst, err := ks.GetSigningKey("HS256")
+		assert.NilError(t, err)
+
+		snd, err := ks.GetSigningKey("HS256")
+		assert.NilError(t, err)
+
+		assert.Check(t, fst.KeyID == snd.KeyID)
+		assert.Check(t, fst.PrivateKey == snd.PrivateKey)
+	})
 }
