@@ -2,6 +2,7 @@ package keystore_test
 
 import (
 	"testing"
+	"unicode"
 
 	"github.com/ale-cci/oauthsrv/pkg/keystore"
 	"gotest.tools/assert"
@@ -81,5 +82,26 @@ func TestKeystore(t *testing.T) {
 		info, err := ks.GetSigningKey("HSRSA257")
 		assert.Check(t, err != nil)
 		assert.Check(t, info == nil)
+	})
+
+	t.Run("fetching unexistent public key should not crash the app", func(t *testing.
+		T) {
+		ks, err := keystore.NewTempKeystore()
+		assert.NilError(t, err)
+
+		_, err = ks.PublicKey("random-kid")
+		assert.Check(t, err != nil)
+	})
+
+	t.Run("KeyID should be all ascii-letters", func(t *testing.T) {
+		ks, err := keystore.NewTempKeystore()
+		assert.NilError(t, err)
+
+		info, err := ks.GetSigningKey("HS256")
+		assert.NilError(t, err)
+
+		for _, c := range info.KeyID {
+			assert.Check(t, c <= unicode.MaxASCII)
+		}
 	})
 }

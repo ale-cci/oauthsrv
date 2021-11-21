@@ -9,7 +9,7 @@ import (
 	"crypto/rsa"
 	"fmt"
 
-	"go.mongodb.org/mongo-driver/x/mongo/driver/uuid"
+	"github.com/google/uuid"
 )
 
 type Keystore interface {
@@ -55,11 +55,7 @@ func (ks *TempKeystore) GetSigningKey(alg string) (*PrivateKeyInfo, error) {
 		return nil, fmt.Errorf("Unable to generate private key: %v", err)
 	}
 
-	kidUUID, err := uuid.New()
-	if err != nil {
-		return nil, fmt.Errorf("Unable to generate unique id for key: %v", err)
-	}
-	kid := string(kidUUID[:])
+	kid := uuid.New().String()
 
 	keyInfo := &PrivateKeyInfo{
 		Alg:        alg,
@@ -75,7 +71,11 @@ func (ks *TempKeystore) GetSigningKey(alg string) (*PrivateKeyInfo, error) {
  * Fetch a private key given it's key id
  */
 func (ks *TempKeystore) PublicKey(kid string) (*rsa.PublicKey, error) {
-	return &ks.Keys[kid].PrivateKey.PublicKey, nil
+	keyInfo, ok := ks.Keys[kid]
+	if !ok {
+		return nil, fmt.Errorf("Key %v not registered", kid)
+	}
+	return &keyInfo.PrivateKey.PublicKey, nil
 }
 
 /**
