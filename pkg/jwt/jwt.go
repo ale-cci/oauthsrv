@@ -26,10 +26,13 @@ type JWTHead struct {
 
 type JWTBody map[string]interface{}
 
-func (j JWT) Encode(ks PrivateKeyStore) string {
+func (j JWT) Encode(ks PrivateKeyStore) (string, error) {
 	payload, _ := j.SigPayload()
-	signature, _ := j.Sign(ks)
-	return payload + "." + signature
+	signature, err := j.Sign(ks)
+	if err != nil {
+		return "", fmt.Errorf("Unable to sign custom token: %v", err)
+	}
+	return payload + "." + signature, nil
 }
 
 func decodeChunk(chunk string, into interface{}) error {
@@ -62,7 +65,7 @@ func Decode(token string) (*JWT, error) {
 		return nil, err
 	}
 
-	return &JWT{&jwtHead, jwtBody, ""}, nil
+	return &JWT{&jwtHead, jwtBody, chunks[2]}, nil
 }
 
 type PubKeyGetter func(kid string) (*rsa.PublicKey, error)
@@ -78,7 +81,7 @@ func (j *JWT) SigPayload() (string, error) {
 }
 
 type PublicKeyStore interface {
-	PublicKey(alg, kid string) (*rsa.PublicKey, error)
+	PublicKey(kid string) (*rsa.PublicKey, error)
 }
 
 func (j *JWT) Verify(ks PublicKeyStore) error {
@@ -86,8 +89,14 @@ func (j *JWT) Verify(ks PublicKeyStore) error {
 		return fmt.Errorf("Tokens with algorithm 'none' could not be verified")
 	}
 
-	pubKey, _ := ks.PublicKey("", "")
-	signature, _ := base64.RawURLEncoding.DecodeString(j.Signature)
+	pubKey, err := ks.PublicKey(j.Head.Kid)
+	if err != nil {
+		return fmt.Errorf("Unable to verify jwt: %v", err)
+	}
+	signature, err := base64.RawURLEncoding.DecodeString(j.Signature)
+	if err != nil {
+		return fmt.Errorf("Unable to decode signature: %v", err)
+	}
 
 	hasher := sha256.New()
 	payload, _ := j.SigPayload()
@@ -98,7 +107,7 @@ func (j *JWT) Verify(ks PublicKeyStore) error {
 }
 
 type PrivateKeyStore interface {
-	PrivateKey(alg, kid string) (*rsa.PrivateKey, error)
+	PrivateKey(kid string) (*rsa.PrivateKey, error)
 }
 
 // Calculates token signature, base64-urlencoded
@@ -108,16 +117,25 @@ func (j JWT) Sign(ks PrivateKeyStore) (string, error) {
 	hasher.Write([]byte(payload))
 	hash := hasher.Sum(nil)
 
-	if ks == nil {
-		return "", fmt.Errorf("PrivateKeystore not provided")
-	}
+	var signature []byte
 
-	privKey, err := ks.PrivateKey("", "")
-	if err != nil {
-		return "", err
-	}
+	if j.Head == nil || j.Head.Alg == "none" {
+		signature = hash[:]
+	} else {
+		if ks == nil {
+			return "", fmt.Errorf("PrivateKeystore not provided")
+		}
 
-	signature, _ := rsa.SignPKCS1v15(rand.Reader, privKey, crypto.SHA256, hash[:])
+		privKey, err := ks.PrivateKey(j.Head.Kid)
+		if err != nil {
+			return "", err
+		}
+
+		signature, err = rsa.SignPKCS1v15(rand.Reader, privKey, crypto.SHA256, hash[:])
+		if err != nil {
+			return "", fmt.Errorf("Unable to sign jwt: %v", err)
+		}
+	}
 
 	b64signature := base64.RawURLEncoding.EncodeToString(signature)
 	return b64signature, nil

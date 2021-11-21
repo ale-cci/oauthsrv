@@ -65,7 +65,7 @@ func handleLogin(cnf *Config, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		sid := jwt.JWT{}.Encode(nil)
+		sid, _ := jwt.JWT{}.Encode(nil)
 
 		http.SetCookie(w, &http.Cookie{Name: "sid", Value: sid})
 		http.Redirect(w, r, afterLogin, http.StatusFound)

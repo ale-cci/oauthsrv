@@ -104,4 +104,12 @@ func TestKeystore(t *testing.T) {
 			assert.Check(t, c <= unicode.MaxASCII)
 		}
 	})
+
+	t.Run("Fetching unexistent private key should not crash the server", func(t *testing.T) {
+		ks, err := keystore.NewTempKeystore()
+		assert.NilError(t, err)
+
+		_, err = ks.PrivateKey("random-kid")
+		assert.Check(t, err != nil)
+	})
 }

@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"context"
+	"io/ioutil"
 	"log"
 	"os"
 	"testing"
@@ -17,6 +18,7 @@ func init() {
 		panic(err)
 	}
 
+	log.SetOutput(ioutil.Discard)
 	// Cleanup test database
 	cfg, err := handlers.EnvConfig()
 	if err != nil {

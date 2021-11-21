@@ -9,12 +9,13 @@ import (
 	"testing"
 
 	"github.com/ale-cci/oauthsrv/pkg/jwt"
+	"github.com/ale-cci/oauthsrv/pkg/keystore"
 	"gotest.tools/assert"
 )
 
 type TestMemoryKeystore struct{}
 
-func (mks *TestMemoryKeystore) PrivateKey(kid string, alg string) (*rsa.PrivateKey, error) {
+func (mks *TestMemoryKeystore) PrivateKey(kid string) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode([]byte(`-----BEGIN RSA PRIVATE KEY-----
 MIIEogIBAAKCAQEAnzyis1ZjfNB0bBgKFMSvvkTtwlvBsaJq7S5wA+kzeVOVpVWw
 kWdVha4s38XM/pa/yr47av7+z3VTmvDRyAHcaT92whREFpLv9cj5lTeJSibyr/Mr
@@ -50,8 +51,8 @@ jg/3747WSsf/zBTcHihTRBdAv6OmdhV4/dD5YBfLAkLrd+mX7iE=
 	return pk, pk.Validate()
 }
 
-func (mks *TestMemoryKeystore) PublicKey(kid string, alg string) (*rsa.PublicKey, error) {
-	key, err := mks.PrivateKey(kid, alg)
+func (mks *TestMemoryKeystore) PublicKey(kid string) (*rsa.PublicKey, error) {
+	key, err := mks.PrivateKey(kid)
 	if err != nil {
 		return nil, err
 	}
@@ -61,13 +62,14 @@ func (mks *TestMemoryKeystore) PublicKey(kid string, alg string) (*rsa.PublicKey
 type EmptyKeystore struct {
 }
 
-func (e EmptyKeystore) PrivateKey(kid, alg string) (*rsa.PrivateKey, error) {
+func (e EmptyKeystore) PrivateKey(kid string) (*rsa.PrivateKey, error) {
 	return nil, fmt.Errorf("key not found")
 }
 
 func TestJWT(t *testing.T) {
 	t.Run("Token should be composed by three chunks, separated by dot", func(t *testing.T) {
-		token := jwt.JWT{}.Encode(nil)
+		token, err := jwt.JWT{}.Encode(nil)
+		assert.NilError(t, err)
 		chunks := strings.Split(token, ".")
 
 		got := len(chunks)
@@ -78,11 +80,12 @@ func TestJWT(t *testing.T) {
 	})
 
 	t.Run("encode + decode should return same jwt-body fields", func(t *testing.T) {
-		token := jwt.JWT{
+		token, err := jwt.JWT{
 			Body: jwt.JWTBody{
 				"iss": "myself",
 			},
 		}.Encode(nil)
+		assert.NilError(t, err)
 		decoded, err := jwt.Decode(token)
 
 		if err != nil {
@@ -257,10 +260,7 @@ func TestValidateJWT(t *testing.T) {
 
 		emptyKS := EmptyKeystore{}
 		_, err := token.Sign(emptyKS)
-
-		if err == nil {
-			t.Errorf("Expected error, got %v", err)
-		}
+		assert.NilError(t, err)
 	})
 
 	t.Run("encoded tokens should end with a signature", func(t *testing.T) {
@@ -272,7 +272,8 @@ func TestValidateJWT(t *testing.T) {
 		if err != nil {
 			t.Errorf("Unexpected error %v", err)
 		}
-		jwtStr := token.Encode(mks)
+		jwtStr, err := token.Encode(mks)
+		assert.NilError(t, err)
 		encoded_sign := strings.Split(jwtStr, ".")[2]
 
 		if sig != encoded_sign {
@@ -281,13 +282,57 @@ func TestValidateJWT(t *testing.T) {
 	})
 
 	t.Run("key id should be included optionally in jwt headers", func(t *testing.T) {
-		token := jwt.JWT{
+		token, err := jwt.JWT{
 			Head: &jwt.JWTHead{Alg: "HS256", Typ: "JWT", Kid: "asdf"},
 			Body: jwt.JWTBody{},
-		}.Encode(nil)
+		}.Encode(mks)
+		assert.NilError(t, err)
 
 		decoded, err := jwt.Decode(token)
 		assert.NilError(t, err)
 		assert.Check(t, decoded.Head.Kid == "asdf")
+	})
+	t.Run("encoded token should be verifiable", func(t *testing.T) {
+		jwtData, err := jwt.JWT{
+			Head: &jwt.JWTHead{
+				Alg: "HS256",
+				Typ: "JWT",
+				Kid: "asdf",
+			},
+			Body: jwt.JWTBody{},
+		}.Encode(mks)
+		assert.NilError(t, err)
+
+		decoded, err := jwt.Decode(jwtData)
+		assert.NilError(t, err)
+
+		err = decoded.Verify(mks)
+		assert.NilError(t, err)
+	})
+
+	t.Run("tokens should be signed using correct key ids", func(t *testing.T) {
+		ks, err := keystore.NewTempKeystore()
+		assert.NilError(t, err)
+
+		info, err := ks.GetSigningKey("HS256")
+		assert.NilError(t, err)
+
+		jwtData, err := jwt.JWT{
+			Head: &jwt.JWTHead{
+				Alg: "HS256",
+				Typ: "JWT",
+				Kid: info.KeyID,
+			},
+			Body: jwt.JWTBody{},
+		}.Encode(ks)
+		assert.NilError(t, err)
+		t.Logf("Token: %v", jwtData)
+
+		decoded, err := jwt.Decode(jwtData)
+		t.Logf("Signature: %v", decoded.Signature)
+		assert.NilError(t, err)
+
+		err = decoded.Verify(ks)
+		assert.NilError(t, err)
 	})
 }

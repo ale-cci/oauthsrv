@@ -77,7 +77,7 @@ func TestAuthorizeEndpoint(t *testing.T) {
 
 	client := NoFollowRedirectClient(srv)
 
-	authToken := jwt.JWT{
+	authToken, err := jwt.JWT{
 		Head: &jwt.JWTHead{
 			Alg: "none",
 		},
@@ -86,6 +86,7 @@ func TestAuthorizeEndpoint(t *testing.T) {
 			"email": "test@email.com",
 		},
 	}.Encode(nil)
+	assert.NilError(t, err)
 
 	authCookie := &http.Cookie{Name: "sid", Value: authToken}
 	location, _ := url.Parse(srv.URL)

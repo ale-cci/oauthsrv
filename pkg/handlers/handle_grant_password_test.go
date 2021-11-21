@@ -94,8 +94,6 @@ func TestHandleAuthPassword(t *testing.T) {
 			log.Fatalf("Unexpected error: %v", err)
 		}
 
-		assert.Equal(t, resp.StatusCode, http.StatusOK)
-
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Errorf("Unable to read response body: %v", err)
@@ -106,13 +104,14 @@ func TestHandleAuthPassword(t *testing.T) {
 		if err != nil {
 			t.Errorf("Unable to decode body as json: %v", err)
 		}
+		assert.Equal(t, resp.StatusCode, http.StatusOK, fields["message"])
 
-		_, err = jwt.Decode(fields["access_token"])
-		if err != nil {
-			t.Logf("Token JWT: %q", fields["access_token"])
-			t.Errorf("Unable to read jwt: %v", err)
-		}
+		jwtData, err := jwt.Decode(fields["access_token"])
+		assert.NilError(t, err)
 
+		assert.Check(t, jwtData.Head.Alg == "HS256")
+
+		err = jwtData.Verify(cnf.Keystore)
+		assert.NilError(t, err)
 	})
-
 }

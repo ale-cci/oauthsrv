@@ -41,9 +41,10 @@ func handleClientCredentials(cnf *Config, w http.ResponseWriter, r *http.Request
 			},
 		}
 
+		tokenB64, _ := token.Encode(nil)
 		jsonBody, err := json.Marshal(struct {
 			Jwt string `json:"jwt"`
-		}{token.Encode(nil)})
+		}{tokenB64})
 
 		if err != nil {
 			http.Error(w, "unable to build jwt", http.StatusInternalServerError)

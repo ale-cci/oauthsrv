@@ -82,7 +82,11 @@ func (ks *TempKeystore) PublicKey(kid string) (*rsa.PublicKey, error) {
  * Fetch a public key given it's key id
  */
 func (ks *TempKeystore) PrivateKey(kid string) (*rsa.PrivateKey, error) {
-	return ks.Keys[kid].PrivateKey, nil
+	keyInfo, ok := ks.Keys[kid]
+	if !ok {
+		return nil, fmt.Errorf("Key %v not registered", kid)
+	}
+	return keyInfo.PrivateKey, nil
 }
 
 func NewTempKeystore() (*TempKeystore, error) {
