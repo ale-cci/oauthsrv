@@ -21,6 +21,7 @@ type JWT struct {
 type JWTHead struct {
 	Alg string `json:"alg"`
 	Typ string `json:"typ"`
+	Kid string `json:"kid,omitempty"`
 }
 
 type JWTBody map[string]interface{}

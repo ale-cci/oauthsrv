@@ -5,9 +5,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"github.com/ale-cci/oauthsrv/pkg/jwt"
 	"strings"
 	"testing"
+
+	"github.com/ale-cci/oauthsrv/pkg/jwt"
+	"gotest.tools/assert"
 )
 
 type TestMemoryKeystore struct{}
@@ -276,5 +278,16 @@ func TestValidateJWT(t *testing.T) {
 		if sig != encoded_sign {
 			t.Errorf("want %q, got %q", sig, encoded_sign)
 		}
+	})
+
+	t.Run("key id should be included optionally in jwt headers", func(t *testing.T) {
+		token := jwt.JWT{
+			Head: &jwt.JWTHead{Alg: "HS256", Typ: "JWT", Kid: "asdf"},
+			Body: jwt.JWTBody{},
+		}.Encode(nil)
+
+		decoded, err := jwt.Decode(token)
+		assert.NilError(t, err)
+		assert.Check(t, decoded.Head.Kid == "asdf")
 	})
 }
