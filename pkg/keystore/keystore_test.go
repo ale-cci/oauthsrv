@@ -59,4 +59,18 @@ func TestKeystore(t *testing.T) {
 		assert.Check(t, fst.KeyID == snd.KeyID)
 		assert.Check(t, fst.PrivateKey == snd.PrivateKey)
 	})
+
+	t.Run("among instantiations key ids should be different", func(t *testing.T) {
+		ks1, err := keystore.NewTempKeystore()
+		assert.NilError(t, err)
+
+		key1, err := ks1.GetSigningKey("HSRSA256")
+		assert.NilError(t, err)
+
+		ks2, err := keystore.NewTempKeystore()
+		key2, err := ks2.GetSigningKey("HSRSA256")
+		assert.NilError(t, err)
+
+		assert.Check(t, key1.KeyID != key2.KeyID)
+	})
 }

@@ -8,6 +8,8 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
+
+	"go.mongodb.org/mongo-driver/x/mongo/driver/uuid"
 )
 
 type Keystore interface {
@@ -50,10 +52,15 @@ func (ks *TempKeystore) GetSigningKey(alg string) (*PrivateKeyInfo, error) {
 		return nil, fmt.Errorf("Unable to generate private key: %v", err)
 	}
 
-	kid := "1"
+	kidUUID, err := uuid.New()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to generate unique id for key: %v", err)
+	}
+	kid := string(kidUUID[:])
+
 	keyInfo := &PrivateKeyInfo{
 		Alg:        alg,
-		KeyID:      kid, // TODO: random UUID
+		KeyID:      kid,
 		PrivateKey: pk,
 	}
 	ks.Keys[kid] = keyInfo
