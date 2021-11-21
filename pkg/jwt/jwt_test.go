@@ -3,10 +3,12 @@ package jwt_test
 import (
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ale-cci/oauthsrv/pkg/jwt"
 	"github.com/ale-cci/oauthsrv/pkg/keystore"
@@ -334,5 +336,47 @@ func TestValidateJWT(t *testing.T) {
 
 		err = decoded.Verify(ks)
 		assert.NilError(t, err)
+	})
+
+}
+func TestNewJWT(t *testing.T) {
+	ks, err := keystore.NewTempKeystore()
+	assert.NilError(t, err)
+
+	t.Run("tokens should contain issued at", func(t *testing.T) {
+		now := time.Now().Unix()
+
+		encodedToken, err := jwt.NewJWT(ks, jwt.JWTBody{})
+		assert.NilError(t, err)
+
+		token, err := jwt.Decode(encodedToken)
+		assert.NilError(t, err)
+
+		iat, err := token.Body["iat"].(json.Number).Int64()
+		assert.NilError(t, err)
+		assert.Check(t, iat >= now)
+		assert.Check(t, iat <= now+1)
+	})
+
+	t.Run("tokens should contain custom claims in body", func(t *testing.T) {
+		encodedToken, err := jwt.NewJWT(ks, jwt.JWTBody{
+			"custom": "claim",
+		})
+		assert.NilError(t, err)
+
+		token, err := jwt.Decode(encodedToken)
+		assert.NilError(t, err)
+
+		assert.Check(t, token.Body["custom"] == "claim")
+	})
+
+	t.Run("tokens should be signed", func(t *testing.T) {
+		encodedToken, err := jwt.NewJWT(ks, jwt.JWTBody{})
+		assert.NilError(t, err)
+
+		token, err := jwt.Decode(encodedToken)
+		assert.NilError(t, err)
+
+		assert.NilError(t, token.Verify(ks))
 	})
 }

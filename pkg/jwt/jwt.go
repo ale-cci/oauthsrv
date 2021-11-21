@@ -10,6 +10,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
+
+	"github.com/ale-cci/oauthsrv/pkg/keystore"
 )
 
 type JWT struct {
@@ -139,4 +142,28 @@ func (j JWT) Sign(ks PrivateKeyStore) (string, error) {
 
 	b64signature := base64.RawURLEncoding.EncodeToString(signature)
 	return b64signature, nil
+}
+
+type KeySigner interface {
+	GetSigningKey(alg string) (*keystore.PrivateKeyInfo, error)
+	PrivateKey(kid string) (*rsa.PrivateKey, error)
+}
+
+func NewJWT(ks KeySigner, claims map[string]interface{}) (string, error) {
+
+	keyInfo, _ := ks.GetSigningKey("HS256")
+
+	// add protocol claims
+	claims["iat"] = time.Now().Unix()
+
+	token := JWT{
+		Head: &JWTHead{
+			Alg: keyInfo.Alg,
+			Kid: keyInfo.KeyID,
+		},
+		Body: claims,
+	}
+
+	signed, err := token.Encode(ks)
+	return signed, err
 }
