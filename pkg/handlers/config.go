@@ -5,26 +5,14 @@ package handlers
 
 import (
 	"context"
-	"crypto/rsa"
 	"fmt"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"net/http"
 	"os"
+
+	"github.com/ale-cci/oauthsrv/pkg/keystore"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-/**
- * Private/Public keystore interface
- * It's usage is to retrieve a public and private keys from a generic source,
- * could be from memory or from a database.
- */
-type PKStore interface {
-	GetPublicKey(alg string, kid string) (*rsa.PublicKey, error)
-	GetPrivateKey(alg string, kid string) (*rsa.PrivateKey, error)
-
-	// list keyid algorithm
-	ListKeys() map[string]string
-}
 
 /**
  * Application configuration, injected to each handlers registered.
@@ -34,7 +22,7 @@ type Config struct {
 	Database *mongo.Database
 
 	// application keystore, used to sign jwts
-	KeyStore PKStore
+	Keystore keystore.Keystore
 }
 
 /**
@@ -51,8 +39,11 @@ func EnvConfig() (*Config, error) {
 		return nil, fmt.Errorf("Unable establish connection: %v", err)
 	}
 
+	ks, _ := keystore.NewTempKeystore()
+
 	return &Config{
 		Database: client.Database(os.Getenv("DB_NAME")),
+		Keystore: ks,
 	}, nil
 }
 

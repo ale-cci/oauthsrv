@@ -10,6 +10,12 @@ import (
 	"fmt"
 )
 
+type Keystore interface {
+	PublicKey(kid string) (*rsa.PublicKey, error)
+	PrivateKey(kid string) (*rsa.PrivateKey, error)
+	GetSigningKey(alg string) (*PrivateKeyInfo, error)
+}
+
 /**
  * Volatile Keystore, keys are generated on the fly when
  * requested.

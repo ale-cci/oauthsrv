@@ -2,10 +2,12 @@ package handlers_test
 
 import (
 	"context"
-	"github.com/ale-cci/oauthsrv/pkg/handlers"
 	"log"
 	"os"
 	"testing"
+
+	"github.com/ale-cci/oauthsrv/pkg/handlers"
+	"gotest.tools/assert"
 )
 
 func init() {
@@ -46,5 +48,14 @@ func TestEnvConfig(t *testing.T) {
 		if got != want {
 			t.Fatalf("want %s, got: %s", want, got)
 		}
+	})
+
+	t.Run("default config should use a valid keystore", func(t *testing.T) {
+		cfg, err := handlers.EnvConfig()
+		assert.NilError(t, err)
+
+		info, err := cfg.Keystore.GetSigningKey("HSRSA256")
+		assert.NilError(t, err)
+		assert.Check(t, info != nil)
 	})
 }
