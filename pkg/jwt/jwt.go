@@ -92,6 +92,24 @@ func (j *JWT) Verify(ks PublicKeyStore) error {
 		return fmt.Errorf("Tokens with algorithm 'none' could not be verified")
 	}
 
+	if exp, ok := j.Body["exp"]; ok {
+		var expiryDateTime int64
+
+		if value, ok := exp.(int64); ok {
+			expiryDateTime = value
+		} else if value, ok := exp.(json.Number); ok {
+			jsonValue, _ := value.Float64()
+			expiryDateTime = int64(jsonValue)
+		} else {
+			return fmt.Errorf("Unable to decode jwt token: invalid `exp` value")
+		}
+
+		now := time.Now().Unix()
+		if expiryDateTime <= now {
+			return fmt.Errorf("JWT is expired")
+		}
+	}
+
 	pubKey, err := ks.PublicKey(j.Head.Kid)
 	if err != nil {
 		return fmt.Errorf("Unable to verify jwt: %v", err)

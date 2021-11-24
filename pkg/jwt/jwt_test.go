@@ -197,6 +197,46 @@ func TestValidateJWT(t *testing.T) {
 		}
 	})
 
+	t.Run("verify should return error if exp is an invalid value", func(t *testing.T) {
+		token := jwt.JWT{
+			Head: &jwt.JWTHead{
+				Alg: "RS256",
+				Typ: "JWT",
+				Kid: "test",
+			},
+			Body: jwt.JWTBody{
+				"exp": "test",
+			},
+		}
+		var err error
+		token.Signature, err = token.Sign(mks)
+		assert.NilError(t, err)
+
+		err = token.Verify(mks)
+		assert.Check(t, err != nil)
+		assert.Check(t, strings.Contains(err.Error(), "invalid `exp`"))
+	})
+
+	t.Run("float `exp` value should be supported", func(t *testing.T) {
+		exp := fmt.Sprintf("%f", float64(time.Now().Unix())+3600.5)
+		token := jwt.JWT{
+			Head: &jwt.JWTHead{
+				Alg: "RS256",
+				Typ: "JWT",
+				Kid: "test",
+			},
+			Body: jwt.JWTBody{
+				"exp": json.Number(exp),
+			},
+		}
+		var err error
+		token.Signature, err = token.Sign(mks)
+		assert.NilError(t, err)
+
+		t.Logf("exp: %f", token.Body["exp"])
+		assert.NilError(t, token.Verify(mks))
+	})
+
 	t.Run("invlid signatures should return errors", func(t *testing.T) {
 		token := jwt.JWT{
 			Head: &jwt.JWTHead{
@@ -310,6 +350,26 @@ func TestValidateJWT(t *testing.T) {
 
 		err = decoded.Verify(mks)
 		assert.NilError(t, err)
+	})
+
+	t.Run("verify should check the expiration date if present", func(t *testing.T) {
+		now := time.Now().Unix()
+		jwt := jwt.JWT{
+			Head: &jwt.JWTHead{
+				Alg: "HS256",
+				Typ: "JWT",
+				Kid: "asdf",
+			},
+			Body: jwt.JWTBody{
+				"exp": now - 1,
+			},
+		}
+
+		var err error
+		jwt.Signature, err = jwt.Sign(mks)
+		assert.NilError(t, err)
+
+		assert.Check(t, jwt.Verify(mks) != nil)
 	})
 
 	t.Run("tokens should be signed using correct key ids", func(t *testing.T) {
