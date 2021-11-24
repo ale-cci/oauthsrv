@@ -154,7 +154,9 @@ func NewJWT(ks KeySigner, claims map[string]interface{}) (string, error) {
 	keyInfo, _ := ks.GetSigningKey("HS256")
 
 	// add protocol claims
-	claims["iat"] = time.Now().Unix()
+	issuedAt := time.Now().Unix()
+	claims["iat"] = issuedAt
+	claims["exp"] = issuedAt + 3600
 
 	token := JWT{
 		Head: &JWTHead{

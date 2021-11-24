@@ -379,4 +379,25 @@ func TestNewJWT(t *testing.T) {
 
 		assert.NilError(t, token.Verify(ks))
 	})
+
+	t.Run("tokens should contain expiration time 'exp'", func(t *testing.T) {
+		issuedAt := time.Now().Unix()
+		encToken, err := jwt.NewJWT(ks, jwt.JWTBody{})
+		assert.NilError(t, err)
+
+		token, err := jwt.Decode(encToken)
+		assert.NilError(t, err)
+
+		exp, ok := token.Body["exp"]
+		assert.Check(t, ok, "exp not found in token body")
+
+		expValue, err := exp.(json.Number).Int64()
+		assert.NilError(t, err)
+		assert.Check(t, expValue > issuedAt)
+
+		t.Run("tokens should live more than 15 minutes and less than 3 hours", func(t *testing.T) {
+			assert.Check(t, expValue >= issuedAt+60*15)
+			assert.Check(t, expValue <= issuedAt+3600*3)
+		})
+	})
 }
