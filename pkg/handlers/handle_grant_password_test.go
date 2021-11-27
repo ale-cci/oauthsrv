@@ -114,5 +114,12 @@ func TestHandleAuthPassword(t *testing.T) {
 			assert.NilError(t, err)
 			assert.Check(t, iatValue <= time.Now().Unix(), fmt.Sprintf("[iat is %v]", iatValue))
 		})
+
+		t.Run("jwt has correct sub value", func(t *testing.T) {
+			sub, ok := jwtData.Body["sub"]
+			assert.Assert(t, ok, "Provided jwt doesn't have sub field")
+
+			assert.Equal(t, sub, "unique-user-identifier")
+		})
 	})
 }

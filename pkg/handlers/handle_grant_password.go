@@ -12,7 +12,8 @@ import (
 )
 
 type Identity struct {
-	Email    string `bson:"_id"`
+	Uid      string `bson:"_id"`
+	Email    string `bson:"email"`
 	Password string `bson:"password"`
 }
 
@@ -50,7 +51,7 @@ func handleGrantPassword(cnf *Config, w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
-	_, err := GetIdentity(r.Context(), cnf, username, password)
+	identity, err := GetIdentity(r.Context(), cnf, username, password)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		enc.Encode(map[string]string{
@@ -60,7 +61,9 @@ func handleGrantPassword(cnf *Config, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenB64, err := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{})
+	tokenB64, err := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{
+		"sub": identity.Uid,
+	})
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
