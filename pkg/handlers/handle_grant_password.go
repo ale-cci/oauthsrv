@@ -60,17 +60,8 @@ func handleGrantPassword(cnf *Config, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signingKey, _ := cnf.Keystore.GetSigningKey("HS256")
+	tokenB64, err := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{})
 
-	token := jwt.JWT{
-		Head: &jwt.JWTHead{
-			Alg: "HS256",
-			Kid: signingKey.KeyID,
-		},
-		Body: jwt.JWTBody{},
-	}
-
-	tokenB64, err := token.Encode(cnf.Keystore)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		enc.Encode(map[string]string{

@@ -4,11 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/ale-cci/oauthsrv/pkg/handlers"
 	"github.com/ale-cci/oauthsrv/pkg/jwt"
@@ -113,5 +115,23 @@ func TestHandleAuthPassword(t *testing.T) {
 
 		err = jwtData.Verify(cnf.Keystore)
 		assert.NilError(t, err)
+
+		t.Run("jwt has valid exp date", func(t *testing.T) {
+			exp, ok := jwtData.Body["exp"]
+			assert.Assert(t, ok, "Provided jwt doesn't have exp field")
+
+			expValue, err := exp.(json.Number).Int64()
+			assert.NilError(t, err)
+			assert.Check(t, expValue > time.Now().Unix(), fmt.Sprintf("[exp is %v]", expValue))
+		})
+
+		t.Run("jwt has valid iat field", func(t *testing.T) {
+			iat, ok := jwtData.Body["iat"]
+			assert.Assert(t, ok, "Provided jwt doesn't have iat field")
+
+			iatValue, err := iat.(json.Number).Int64()
+			assert.NilError(t, err)
+			assert.Check(t, iatValue <= time.Now().Unix(), fmt.Sprintf("[iat is %v]", iatValue))
+		})
 	})
 }
