@@ -14,7 +14,7 @@ Password: root
 | `/login` | login for not authenticated users ([handle\_login.go](./pkg/handlers/handle_login.go))|
 | `/oauth/v2/auth` | asks user to grant authorization, on completions redirects to `redirect_uri` ([handle\_authorize.go](./pkg/handlers/handle_authorize.go))|
 
-For API references go [here](./examples/api.md)
+For API references go [here](./docs/api.md)
 
 ### Contributing
 ```sh
@@ -29,8 +29,4 @@ Tests are run inside an isolated docker container, when launched, it automatical
 boots up the MongoDB and changes the default database to `test-oidc`
 
 ### MongoDB schema:
-```
-oidc
- - identities: list of registered users
- - apps: registered applications (with client secret + client id)
-```
+See [here](./docs/schema.md)
