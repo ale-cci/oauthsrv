@@ -1,3 +1,5 @@
+> The application is still under development.
+> This APIs could be subject to change on the definitive version of this project.
 ### Authentication
 
 ```http
