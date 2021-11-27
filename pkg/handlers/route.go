@@ -41,8 +41,11 @@ func handleHealthCheck(cnf *Config, w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Ok!"))
 }
 
-// Authorization for server-side responses, if the request is invalid,
-// redirect to login page
+/**
+ * Middleware for server-side responses. If a user is calling an endpoint and
+ * it's not authenticated, it is automatically redirected to the
+ * login page.
+ */
 func Authorize(handler CnfHandlerFunc) CnfHandlerFunc {
 	return func(cnf *Config, w http.ResponseWriter, r *http.Request) {
 		sid, err := r.Cookie("sid")
@@ -69,7 +72,10 @@ func Authorize(handler CnfHandlerFunc) CnfHandlerFunc {
 }
 
 /**
+ * Middleware that checks jwt validity before invoking an endpoint.
  * According to https://datatracker.ietf.org/doc/html/rfc6750#section-3.1
+ * the scopeChecker function is called after jwt validation.
+ * in case the jwt doesn't have the required scopes it should return an error
  */
 func CheckJWT(handler CnfHandlerFunc, scopeChecker func(jwt.JWTBody) error) CnfHandlerFunc {
 	return func(cnf *Config, w http.ResponseWriter, r *http.Request) {
@@ -78,21 +84,23 @@ func CheckJWT(handler CnfHandlerFunc, scopeChecker func(jwt.JWTBody) error) CnfH
 		_, err := fmt.Sscanf(auth, "Bearer %s", &encodedJWT)
 
 		if err != nil {
-			// unable to scan token from provided headers
+			// JWT not provided
 			w.Header().Set("www-authenticate", "Bearer error=\"invalid_request\"")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		decodedJWT, err := jwt.Decode(encodedJWT)
-		if err != nil {
-			// invalid token
+		if err != nil || decodedJWT.Verify(cnf.Keystore) != nil {
+			// the provided jwt doesn't rispect the jwt format or it's
+			// not verifiable.
 			w.Header().Set("www-authenticate", "Bearer error=\"invalid_token\"")
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
 		if err := scopeChecker(decodedJWT.Body); err != nil {
+			// Provided jwt does not have the requied scopes
 			w.Header().Set("www-authenticate", "Bearer error=\"insufficient_scope\"")
 			w.WriteHeader(http.StatusForbidden)
 		} else {

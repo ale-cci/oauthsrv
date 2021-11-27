@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/ale-cci/oauthsrv/pkg/handlers"
 	"github.com/ale-cci/oauthsrv/pkg/jwt"
@@ -135,7 +136,7 @@ func TestTokenAuthorize(t *testing.T) {
 		)
 	})
 
-	t.Run("should return 401 if token is expired", func(t *testing.T) {
+	t.Run("should return 401 if token is malformed", func(t *testing.T) {
 		req, err := http.NewRequest("POST", srv.URL+"/test", nil)
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", "a.b.c"))
 		assert.NilError(t, err)
@@ -185,4 +186,29 @@ func TestTokenAuthorize(t *testing.T) {
 		assert.Check(t, authenticateHeader == "Bearer error=\"insufficient_scope\"")
 	})
 
+	t.Run("should return 401 if token is not valid", func(t *testing.T) {
+		req, err := http.NewRequest("POST", srv.URL+"/test", nil)
+		assert.NilError(t, err)
+
+		encodedJWT, err := jwt.JWT{
+			Head: &jwt.JWTHead{
+				Alg: "none",
+			},
+			Body: jwt.JWTBody{
+				"exp":          time.Now().Unix() + 3600,
+				"custom_field": true,
+			},
+		}.Encode(nil)
+
+		assert.NilError(t, err)
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", encodedJWT))
+		assert.NilError(t, err)
+
+		resp, err := client.Do(req)
+		assert.NilError(t, err)
+		assert.Check(t, resp.StatusCode == http.StatusUnauthorized, fmt.Sprintf("[resp.StatusCode is %v]", resp.StatusCode))
+
+		authenticateHeader := resp.Header.Get("www-authenticate")
+		assert.Check(t, authenticateHeader == "Bearer error=\"invalid_token\"")
+	})
 }
