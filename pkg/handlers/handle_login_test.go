@@ -57,7 +57,7 @@ func TestHandleLoginPost(t *testing.T) {
 			{Key: "email", Value: "test@email.com"},
 		},
 		bson.D{{
-			Key: "$set",
+			Key:   "$set",
 			Value: bson.D{{Key: "password", Value: password}},
 		}},
 		options.Update().SetUpsert(true),
