@@ -24,6 +24,9 @@ projects:
   terms_conditions: 'url of terms and conditions'
   logo: image
 ```
+Project data could be created only by users with `admin` or `manager` group.
+
+An existent project could only be modified by users with `admin`, `manager`, `<project-id>:admin` or `<project-id>:manager` group.
 
 ### Credentials:
 Each project has it's list of credentials. A single credential defines a
