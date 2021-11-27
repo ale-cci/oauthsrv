@@ -21,7 +21,7 @@ func GetIdentity(context context.Context, cnf *Config, username, password string
 
 	err := cnf.Database.Collection("identities").FindOne(
 		context,
-		bson.D{{"_id", username}},
+		bson.D{{"email", username}},
 	).Decode(&identity)
 
 	if err != nil {
