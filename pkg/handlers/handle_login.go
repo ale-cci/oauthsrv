@@ -1,13 +1,11 @@
 package handlers
 
 import (
+	"html/template"
+	"net/http"
+
 	"github.com/ale-cci/oauthsrv/pkg/jwt"
 	"github.com/ale-cci/oauthsrv/pkg/passwords"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"html/template"
-	"log"
-	"net/http"
 )
 
 func handleLogin(cnf *Config, w http.ResponseWriter, r *http.Request) {
@@ -40,32 +38,17 @@ func handleLogin(cnf *Config, w http.ResponseWriter, r *http.Request) {
 		password := r.FormValue("password")
 		afterLogin := r.URL.Query().Get("continue")
 
-		var identity struct {
-			Email    string `bson:"_id"`
-			Password string `bson:"password"`
-		}
-		err := cnf.Database.Collection("identities").FindOne(
-			r.Context(),
-			bson.D{{Key: "_id", Value: username}},
-		).Decode(&identity)
+		identity, err := GetIdentity(r.Context(), cnf, username, password)
 
-		if err != nil {
-			if err != mongo.ErrNoDocuments {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			http.Redirect(w, r, r.URL.RequestURI(), http.StatusFound)
-			return
-		}
-
-		if err := passwords.Validate(identity.Password, password); err != nil {
-			log.Println(err.Error())
+		if err != nil || passwords.Validate(identity.Password, password) != nil {
 			http.SetCookie(w, &http.Cookie{Name: "error", Value: "Wrong username or password"})
 			http.Redirect(w, r, r.URL.RequestURI(), http.StatusFound)
 			return
 		}
 
-		sid, _ := jwt.JWT{}.Encode(nil)
+		sid, _ := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{
+			"sub": identity.Uid,
+		})
 
 		http.SetCookie(w, &http.Cookie{Name: "sid", Value: sid})
 		http.Redirect(w, r, afterLogin, http.StatusFound)

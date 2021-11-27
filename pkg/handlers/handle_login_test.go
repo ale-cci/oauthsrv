@@ -6,12 +6,6 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"github.com/ale-cci/oauthsrv/pkg/handlers"
-	"github.com/ale-cci/oauthsrv/pkg/jwt"
-	"github.com/ale-cci/oauthsrv/pkg/passwords"
-	"github.com/kylelemons/godebug/diff"
-	"go.mongodb.org/mongo-driver/bson"
-	"golang.org/x/net/publicsuffix"
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -19,6 +13,15 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"github.com/ale-cci/oauthsrv/pkg/handlers"
+	"github.com/ale-cci/oauthsrv/pkg/jwt"
+	"github.com/ale-cci/oauthsrv/pkg/passwords"
+	"github.com/kylelemons/godebug/diff"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"golang.org/x/net/publicsuffix"
+	"gotest.tools/assert"
 )
 
 func NewTestServer(cnf *handlers.Config) *httptest.Server {
@@ -47,10 +50,18 @@ func TestHandleLoginPost(t *testing.T) {
 	client := NoFollowRedirectClient(srv)
 
 	password, _ := passwords.New(rand.Reader, "password")
-	_, err := cnf.Database.Collection("identities").InsertOne(context.Background(), bson.D{
-		{Key: "_id", Value: "test@email.com"},
-		{Key: "password", Value: password},
-	})
+	_, err := cnf.Database.Collection("identities").UpdateOne(
+		context.Background(),
+		bson.D{
+			{Key: "_id", Value: "unique-login-uid"},
+			{Key: "email", Value: "test@email.com"},
+		},
+		bson.D{{
+			Key: "$set",
+			Value: bson.D{{Key: "password", Value: password}},
+		}},
+		options.Update().SetUpsert(true),
+	)
 	if err != nil {
 		t.Fatalf("Unable to insert test user: %v", err)
 	}
@@ -195,10 +206,15 @@ func TestHandleLoginPost(t *testing.T) {
 			}
 		}
 
-		_, err = jwt.Decode(sid)
-		if err != nil {
-			t.Fatalf("Invalid jwt: %q", sid)
-		}
+		decodedJWT, err := jwt.Decode(sid)
+		assert.NilError(t, err)
+		assert.NilError(t, decodedJWT.Verify(cnf.Keystore))
+
+		t.Run("jwt should have the correct sub", func(t *testing.T) {
+			sub, ok := decodedJWT.Body["sub"]
+			assert.Assert(t, ok, "field 'sub' missing from jwt")
+			assert.Equal(t, sub, "unique-login-uid")
+		})
 	})
 }
 
