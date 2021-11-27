@@ -1,12 +1,17 @@
 package handlers_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"github.com/ale-cci/oauthsrv/pkg/handlers"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/ale-cci/oauthsrv/pkg/handlers"
+	"github.com/ale-cci/oauthsrv/pkg/jwt"
+	"gotest.tools/assert"
 )
 
 func TestHealthcheck(t *testing.T) {
@@ -86,4 +91,98 @@ func TestRoutedFunctions(t *testing.T) {
 			}
 		})
 	}
+}
+func TestTokenAuthorize(t *testing.T) {
+	router := http.NewServeMux()
+	cnf, _ := handlers.EnvConfig()
+
+	scopeChecker := func(jwtBody jwt.JWTBody) error {
+		if _, ok := jwtBody["custom_field"]; !ok {
+			return fmt.Errorf("Missing custom_field")
+		} else {
+			return nil
+		}
+	}
+
+	router.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
+		handlers.CheckJWT(
+			func(cnf *handlers.Config, w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("ok!"))
+			},
+			scopeChecker,
+		)(cnf, w, r)
+	})
+
+	handlers.AddRoutes(cnf, router)
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	client := srv.Client()
+
+	t.Run("should return 400 if Authorization header is not provided", func(t *testing.T) {
+		resp, err := client.Post(srv.URL+"/test", "application/json", bytes.NewReader([]byte{}))
+		assert.NilError(t, err)
+
+		assert.Check(t, resp.StatusCode == http.StatusBadRequest, fmt.Sprintf("[resp.StatusCode is %v]", resp.StatusCode))
+
+		authHeader := resp.Header.Get("www-authenticate")
+		t.Logf("List of headers: %q", resp.Header)
+		assert.Check(
+			t,
+			authHeader == "Bearer error=\"invalid_request\"",
+			fmt.Sprintf("[header is %q]", authHeader),
+		)
+	})
+
+	t.Run("should return 401 if token is expired", func(t *testing.T) {
+		req, err := http.NewRequest("POST", srv.URL+"/test", nil)
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", "a.b.c"))
+		assert.NilError(t, err)
+
+		resp, err := client.Do(req)
+		assert.NilError(t, err)
+		assert.Check(t, resp.StatusCode == http.StatusUnauthorized, fmt.Sprintf("[resp.StatusCode is %v]", resp.StatusCode))
+
+		authenticateHeader := resp.Header.Get("www-authenticate")
+		assert.Check(t, authenticateHeader == "Bearer error=\"invalid_token\"")
+	})
+
+	t.Run("should call wrapped endpoint on valid jwt", func(t *testing.T) {
+		req, err := http.NewRequest("POST", srv.URL+"/test", nil)
+		assert.NilError(t, err)
+
+		encodedJWT, err := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{
+			"custom_field": true,
+		})
+		assert.NilError(t, err)
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", encodedJWT))
+
+		resp, err := client.Do(req)
+		assert.NilError(t, err)
+		assert.Check(t, resp.StatusCode == http.StatusOK, fmt.Sprintf("[status is %v]", resp.StatusCode))
+		body, err := io.ReadAll(resp.Body)
+		assert.NilError(t, err)
+		assert.Check(t, string(body) == "ok!")
+	})
+
+	t.Run("should return 403 without calling the handler if scopeChecker returns an error", func(t *testing.T) {
+		req, err := http.NewRequest("POST", srv.URL+"/test", nil)
+		assert.NilError(t, err)
+
+		encodedJWT, err := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{})
+		assert.NilError(t, err)
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", encodedJWT))
+
+		resp, err := client.Do(req)
+		assert.NilError(t, err)
+		assert.Check(t, resp.StatusCode == http.StatusForbidden, fmt.Sprintf("[status is %v]", resp.StatusCode))
+		body, err := io.ReadAll(resp.Body)
+		assert.NilError(t, err)
+		assert.Check(t, string(body) != "ok!")
+
+		authenticateHeader := resp.Header.Get("www-authenticate")
+		assert.Check(t, authenticateHeader == "Bearer error=\"insufficient_scope\"")
+	})
+
 }

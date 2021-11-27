@@ -1,9 +1,11 @@
 package handlers
 
 import (
-	"github.com/ale-cci/oauthsrv/pkg/jwt"
+	"fmt"
 	"net/http"
 	"net/url"
+
+	"github.com/ale-cci/oauthsrv/pkg/jwt"
 )
 
 type CnfHandlerFunc func(cnf *Config, w http.ResponseWriter, r *http.Request)
@@ -60,6 +62,39 @@ func Authorize(handler CnfHandlerFunc) CnfHandlerFunc {
 		if !isValid {
 			continueTo := url.QueryEscape(r.RequestURI)
 			http.Redirect(w, r, "/login?continue="+continueTo, http.StatusFound)
+		} else {
+			handler(cnf, w, r)
+		}
+	}
+}
+
+/**
+ * According to https://datatracker.ietf.org/doc/html/rfc6750#section-3.1
+ */
+func CheckJWT(handler CnfHandlerFunc, scopeChecker func(jwt.JWTBody) error) CnfHandlerFunc {
+	return func(cnf *Config, w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("authorization")
+		var encodedJWT string
+		_, err := fmt.Sscanf(auth, "Bearer %s", &encodedJWT)
+
+		if err != nil {
+			// unable to scan token from provided headers
+			w.Header().Set("www-authenticate", "Bearer error=\"invalid_request\"")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		decodedJWT, err := jwt.Decode(encodedJWT)
+		if err != nil {
+			// invalid token
+			w.Header().Set("www-authenticate", "Bearer error=\"invalid_token\"")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		if err := scopeChecker(decodedJWT.Body); err != nil {
+			w.Header().Set("www-authenticate", "Bearer error=\"insufficient_scope\"")
+			w.WriteHeader(http.StatusForbidden)
 		} else {
 			handler(cnf, w, r)
 		}
