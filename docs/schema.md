@@ -3,7 +3,7 @@
 ### Users:
 ```yaml
 identities:
-- user_id: '<uuid>'
+- _id: '<uuid>'
   name: string # optional
   surname: string # optional
   address: string # optional
