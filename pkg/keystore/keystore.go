@@ -85,7 +85,7 @@ func (ks *TempKeystore) GetSigningKey(alg string) (*PrivateKeyInfo, error) {
 func (ks *TempKeystore) PublicKey(kid string) (*rsa.PublicKey, error) {
 	keyInfo, ok := ks.Keys[kid]
 	if !ok {
-		return nil, fmt.Errorf("Key %v not registered", kid)
+		return nil, fmt.Errorf("Key %q not registered", kid)
 	}
 	return &keyInfo.PrivateKey.PublicKey, nil
 }
@@ -96,7 +96,7 @@ func (ks *TempKeystore) PublicKey(kid string) (*rsa.PublicKey, error) {
 func (ks *TempKeystore) PrivateKey(kid string) (*rsa.PrivateKey, error) {
 	keyInfo, ok := ks.Keys[kid]
 	if !ok {
-		return nil, fmt.Errorf("Key %v not registered", kid)
+		return nil, fmt.Errorf("Key %q not registered", kid)
 	}
 	return keyInfo.PrivateKey, nil
 }
