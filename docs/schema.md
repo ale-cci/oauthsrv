@@ -2,7 +2,7 @@
 # DB Documents
 ### Users:
 ```yaml
-users:
+identities:
 - user_id: '<uuid>'
   name: string # optional
   surname: string # optional
