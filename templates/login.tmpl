@@ -8,19 +8,23 @@
       html {
         font-size: 14px;
         font-family: system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif,'Apple Color Emoji','Segoe UI Emoji';
-        color: rgb(37, 37, 37)
+        color: rgb(37, 37, 37);
+
+        --primary-color: rgb(54, 106, 228);
+        --bg-color: rgb(243, 244, 246);
+        --corner-color: rgb(229, 231, 235);
       }
 
       body {
         margin: 0;
         padding: 0;
+        background-color: var(--bg-color);
       }
 
       .hero-container {
         display: flex;
         flex-direction: column;
         height: 100vh;
-        background-color: rgb(243, 244, 246);
         justify-content: center;
         align-items: center;
         font-size: 1rem;
@@ -30,10 +34,13 @@
         max-width: 20rem;
         width: 100%;
         border-radius: 2px;
-        border: solid 1px rgb(229, 231, 235);
+        border: solid 1px var(--corner-color);
         background-color: #fff;
         padding: 2rem;
-        box-shadow: rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 4px 6px -1px, rgba(0, 0, 0, 0.06) 0px 2px 4px -1px;
+        box-shadow: rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+                    rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+                    rgba(0, 0, 0, 0.1) 0px 4px 6px -1px,
+                    rgba(0, 0, 0, 0.06) 0px 2px 4px -1px;
       }
 
       .block {
@@ -53,25 +60,26 @@
         display: block;
         width: 100%;
         appearance: none;
-        border: solid 1px rgb(229, 231, 235);
+        border: solid 1px var(--corner-color);
         padding: .75rem;
         border-radius: 2px;
         margin-bottom: 0.5rem;
       }
 
       .block button {
-        background-color: rgb(84, 134, 236);
+        background-color: var(--primary-color);
         color: #fff
       }
 
       .block input:focus, .block button:focus {
         outline: none;
-        border: solid 1px rgb(84, 134, 236);
+        border: solid 1px var(--primary-color);
         box-shadow: 0 0 0 2px rgba(84, 135, 236, 0.527);
       }
 
-      .block button:hover {
-        background-color: rgb(44, 106, 228);
+      button:not(:disabled) { cursor: pointer }
+      .block button:hover, .block button:disabled {
+        opacity: .7;
       }
 
       .block.login-button {
@@ -127,4 +135,14 @@
       </p>
     </div>
   </body>
+  <script>
+    const submitBtn = document.querySelector('button[type=submit]')
+    document.addEventListener('submit', function() {
+        submitBtn.disabled = true
+          event.preventDefault()
+        setTimeout(function() {
+          submitBtn.disabled = false
+        }, 3000)
+    })
+  </script>
 </html>
