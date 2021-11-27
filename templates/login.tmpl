@@ -139,7 +139,6 @@
     const submitBtn = document.querySelector('button[type=submit]')
     document.addEventListener('submit', function() {
         submitBtn.disabled = true
-          event.preventDefault()
         setTimeout(function() {
           submitBtn.disabled = false
         }, 3000)
