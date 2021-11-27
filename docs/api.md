@@ -1,7 +1,6 @@
 > The application is still under development.
 > This APIs could be subject to change on the definitive version of this project.
 ### Authentication
-
 ```http
 POST /oauth/v2/auth?grant_type=password HTTP/1.1
 Content-Type: application/json
@@ -20,6 +19,46 @@ HTTP/1.1 200 OK
     "refresh_token": "",
 }
 ```
+
+### Users:
+##### Create a new user
+```http
+POST /api/v1/users HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <xxx>
+
+{
+    "email": "",
+    "email_verified": "boolean (optional)",
+}
+```
+
+##### Add group to an existing user
+This request could only be performed by users in `admin` or `manager` group,
+or if `project-id` is specified in the group name, by users with group: `<project-id>:admin`
+and `<project-id>:manager` groups.
+
+```http
+POST /app/v1/users/:user-id/groups HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <xxx>
+
+{
+    "group": "<project-id>:<group>"
+}
+```
+
+##### Delete group of an existing user
+This endpoint has the same restrictions of add group, but `manager` could not delete
+`admin` group, and `<project-id>:manager` could not delete `<project-id>:admin` group.
+Otherwise `403`.
+
+```http
+DELETE /app/v1/users/:user-id/groups/:group HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <xxx>
+```
+
 
 ---
 ### Projects:
@@ -109,3 +148,23 @@ When a user in the `manager` or `admin` groups calls the endpoint,
 
 the app-id is automatically generated, and the user is added to the `app-id:admin` group.
 
+
+### Scope:
+##### Create a scope
+Scopes could only be created by users in group:
+- `admin`
+- `manager`
+- `<proj-id>:admin`
+- `<proj-id>:manager`
+
+```
+POST /api/v1/project/:proj-id/scopes HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <xxx>
+
+{
+    "pattern": "<proj-id>/...",
+    "groups": ["optional"],
+    "grant": {"any json object": []}
+}
+```
