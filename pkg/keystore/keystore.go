@@ -12,10 +12,28 @@ import (
 	"github.com/google/uuid"
 )
 
-type Keystore interface {
-	PublicKey(kid string) (*rsa.PublicKey, error)
+type PrivateKeyInfo struct {
+	Alg        string          // signing algorithm
+	KeyID      string          // unique identifier of the key in the keystore
+	PrivateKey *rsa.PrivateKey // actual key
+}
+
+type PrivateKeystore interface {
 	PrivateKey(kid string) (*rsa.PrivateKey, error)
+}
+
+type PrivateKeyProvider interface {
+	PrivateKeystore
 	GetSigningKey(alg string) (*PrivateKeyInfo, error)
+}
+
+type PublicKeystore interface {
+	PublicKey(kid string) (*rsa.PublicKey, error)
+}
+
+type Keystore interface {
+	PrivateKeyProvider
+	PublicKeystore
 }
 
 /**
@@ -25,12 +43,6 @@ type Keystore interface {
  */
 type TempKeystore struct {
 	Keys map[string](*PrivateKeyInfo)
-}
-
-type PrivateKeyInfo struct {
-	Alg        string
-	KeyID      string
-	PrivateKey *rsa.PrivateKey
 }
 
 /**

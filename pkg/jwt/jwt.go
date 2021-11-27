@@ -29,7 +29,7 @@ type JWTHead struct {
 
 type JWTBody map[string]interface{}
 
-func (j JWT) Encode(ks PrivateKeyStore) (string, error) {
+func (j JWT) Encode(ks keystore.PrivateKeystore) (string, error) {
 	payload, _ := j.SigPayload()
 	signature, err := j.Sign(ks)
 	if err != nil {
@@ -71,8 +71,6 @@ func Decode(token string) (*JWT, error) {
 	return &JWT{&jwtHead, jwtBody, chunks[2]}, nil
 }
 
-type PubKeyGetter func(kid string) (*rsa.PublicKey, error)
-
 func (j *JWT) SigPayload() (string, error) {
 	headBytes, _ := json.Marshal(j.Head)
 	bodyBytes, _ := json.Marshal(j.Body)
@@ -83,11 +81,7 @@ func (j *JWT) SigPayload() (string, error) {
 	return encHead + "." + encBody, nil
 }
 
-type PublicKeyStore interface {
-	PublicKey(kid string) (*rsa.PublicKey, error)
-}
-
-func (j *JWT) Verify(ks PublicKeyStore) error {
+func (j *JWT) Verify(ks keystore.PublicKeystore) error {
 	if j.Head.Alg == "none" {
 		return fmt.Errorf("Tokens with algorithm 'none' could not be verified")
 	}
@@ -127,12 +121,8 @@ func (j *JWT) Verify(ks PublicKeyStore) error {
 	return rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, hash[:], signature)
 }
 
-type PrivateKeyStore interface {
-	PrivateKey(kid string) (*rsa.PrivateKey, error)
-}
-
 // Calculates token signature, base64-urlencoded
-func (j JWT) Sign(ks PrivateKeyStore) (string, error) {
+func (j JWT) Sign(ks keystore.PrivateKeystore) (string, error) {
 	hasher := sha256.New()
 	payload, _ := j.SigPayload()
 	hasher.Write([]byte(payload))
@@ -162,13 +152,9 @@ func (j JWT) Sign(ks PrivateKeyStore) (string, error) {
 	return b64signature, nil
 }
 
-type KeySigner interface {
-	GetSigningKey(alg string) (*keystore.PrivateKeyInfo, error)
-	PrivateKey(kid string) (*rsa.PrivateKey, error)
-}
-
-func NewJWT(ks KeySigner, claims map[string]interface{}) (string, error) {
-
+// Generate new signed JWT, containing the provided claims
+// requires a private key provider to sign the jwt.
+func NewJWT(ks keystore.PrivateKeyProvider, claims map[string]interface{}) (string, error) {
 	keyInfo, _ := ks.GetSigningKey("HS256")
 
 	// add protocol claims
