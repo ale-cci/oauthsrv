@@ -13,11 +13,11 @@ Content-Type: application/json
 ```
 
 ```http
-HTTP/1.1 200 Ok
+HTTP/1.1 200 OK
 {
     "id_token": "",
     "access_token": "",
-    "refresh_token": "',
+    "refresh_token": "",
 }
 ```
 
@@ -80,7 +80,7 @@ Content-Type: application/json
 Authorization: Bearer <xxx>
 
 {
-    "type": "public"|"private",
+    "type": "public or private",
     "description": "",
     "redirect_uris": []
 }
