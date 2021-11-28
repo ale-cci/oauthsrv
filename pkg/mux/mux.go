@@ -21,7 +21,7 @@ func NewServeMux() *Router {
 	}
 }
 
-func (router *Router) Vars(r *http.Request) map[string]string {
+func Vars(r *http.Request) map[string]string {
 	if params := r.Context().Value(varsContextKey); params != nil {
 		return params.(map[string]string)
 	}

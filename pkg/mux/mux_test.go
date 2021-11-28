@@ -12,8 +12,8 @@ import (
 )
 
 func TestMux(t *testing.T) {
-	mux := mux.NewServeMux()
-	mux.HandleFunc("/test/(?P<id>\\w+)", func(w http.ResponseWriter, r *http.Request) {
+	router := mux.NewServeMux()
+	router.HandleFunc("/test/(?P<id>\\w+)", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
 		testId, ok := mux.Vars(r)["id"]
@@ -25,7 +25,7 @@ func TestMux(t *testing.T) {
 		}
 		w.Write([]byte(resp))
 	})
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(router)
 	defer srv.Close()
 
 	t.Run("should return 200", func(t *testing.T) {
