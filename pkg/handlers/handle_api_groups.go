@@ -7,6 +7,7 @@ import (
 
 	"github.com/ale-cci/oauthsrv/pkg/jwt"
 	"github.com/ale-cci/oauthsrv/pkg/mux"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func handleGroups(cnf *Config, w http.ResponseWriter, r *http.Request) {
@@ -42,7 +43,23 @@ func handleGroupsGET(cnf *Config, w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	requestedId := params["user_id"]
 
-	if subId != requestedId {
+	var user struct {
+		Groups []string `json:"groups"`
+	}
+	cnf.Database.Collection("identities").FindOne(
+		r.Context(),
+		bson.D{{Key: "_id", Value: subId}},
+	).Decode(&user)
+
+	isSuperUser := false
+	for _, g := range user.Groups {
+		if g == "admin" || g == "manager" {
+			isSuperUser = true
+			break
+		}
+	}
+
+	if subId != requestedId && !isSuperUser {
 		w.WriteHeader(http.StatusForbidden)
 		encoder.Encode(JSONApi{
 			Message: "Not Authorized",
@@ -50,11 +67,16 @@ func handleGroupsGET(cnf *Config, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cnf.Database.Collection("identities").FindOne(
+		r.Context(),
+		bson.D{{Key: "_id", Value: requestedId}},
+	).Decode(&user)
+
+	if user.Groups == nil {
+		user.Groups = []string{}
+	}
+
 	encoder.Encode(JSONApi{
-		Data: struct {
-			Groups []string `json:"groups"`
-		}{
-			Groups: []string{},
-		},
+		Data: user,
 	})
 }

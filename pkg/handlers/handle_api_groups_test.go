@@ -43,6 +43,19 @@ func TestHandleGroupsApi(t *testing.T) {
 				{Key: "_id", Value: "the-second-user"},
 				{Key: "email", Value: "another@email.com"},
 				{Key: "password", Value: passwd},
+				{Key: "groups", Value: []string{"uno", "dos", "tres"}},
+			},
+			bson.D{
+				{Key: "_id", Value: "admin-user"},
+				{Key: "email", Value: "admond@email.com"},
+				{Key: "password", Value: passwd},
+				{Key: "groups", Value: []string{"admin"}},
+			},
+			bson.D{
+				{Key: "_id", Value: "the-manager"},
+				{Key: "email", Value: "managerz@email.com"},
+				{Key: "password", Value: passwd},
+				{Key: "groups", Value: []string{"manager"}},
 			},
 		},
 	)
@@ -113,5 +126,96 @@ func TestHandleGroupsApi(t *testing.T) {
 			assert.Assert(t, ok, "`message` should be contained in json response")
 			assert.Assert(t, msg != "", "`message` should not be empty")
 		})
+	})
+
+	t.Run("should return 403 if sub is not provided", func(t *testing.T) {
+		req, err := http.NewRequest("GET", srv.URL+"/api/users/the-first-user/groups", nil)
+		assert.NilError(t, err)
+		token, err := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{})
+		assert.NilError(t, err)
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+		resp, err := client.Do(req)
+		assert.NilError(t, err)
+		assert.Equal(t, resp.StatusCode, http.StatusForbidden)
+	})
+
+	t.Run("should return non empty list if user has groups", func(t *testing.T) {
+		req, err := http.NewRequest("GET", srv.URL+"/api/users/the-second-user/groups", nil)
+		assert.NilError(t, err)
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token2))
+
+		resp, err := client.Do(req)
+		assert.NilError(t, err)
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
+
+		var response struct {
+			Data struct {
+				Groups []string `json:"groups"`
+			} `json:"data"`
+		}
+		body, err := io.ReadAll(resp.Body)
+		assert.NilError(t, err)
+
+		err = json.Unmarshal(body, &response)
+		assert.NilError(t, err)
+
+		assert.DeepEqual(t, response.Data.Groups, []string{"uno", "dos", "tres"})
+	})
+
+	t.Run("returns list of groups if user performing the request is admin", func(t *testing.T) {
+		req, err := http.NewRequest("GET", srv.URL+"/api/users/the-second-user/groups", nil)
+		assert.NilError(t, err)
+
+		token, err := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{
+			"sub": "admin-user",
+		})
+		assert.NilError(t, err)
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+		resp, err := client.Do(req)
+		assert.NilError(t, err)
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
+
+		var response struct {
+			Data struct {
+				Groups []string `json:"groups"`
+			} `json:"data"`
+		}
+		body, err := io.ReadAll(resp.Body)
+		assert.NilError(t, err)
+
+		err = json.Unmarshal(body, &response)
+		assert.NilError(t, err)
+
+		assert.DeepEqual(t, response.Data.Groups, []string{"uno", "dos", "tres"})
+	})
+
+	t.Run("returns list of groups if user performing the request is manager", func(t *testing.T) {
+		req, err := http.NewRequest("GET", srv.URL+"/api/users/the-second-user/groups", nil)
+		assert.NilError(t, err)
+
+		token, err := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{
+			"sub": "the-manager",
+		})
+		assert.NilError(t, err)
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+		resp, err := client.Do(req)
+		assert.NilError(t, err)
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
+
+		var response struct {
+			Data struct {
+				Groups []string `json:"groups"`
+			} `json:"data"`
+		}
+		body, err := io.ReadAll(resp.Body)
+		assert.NilError(t, err)
+
+		err = json.Unmarshal(body, &response)
+		assert.NilError(t, err)
+
+		assert.DeepEqual(t, response.Data.Groups, []string{"uno", "dos", "tres"})
 	})
 }
