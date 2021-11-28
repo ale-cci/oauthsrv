@@ -1,3 +1,6 @@
+/**
+ * Minimal router package, only intent is to add support for url parameters.
+ */
 package mux
 
 import (
@@ -6,7 +9,7 @@ import (
 	"regexp"
 )
 
-const VARS_CTX_KEY string = "vars"
+const varsContextKey string = "vars"
 
 type Router struct {
 	handlers map[*regexp.Regexp]http.HandlerFunc
@@ -19,13 +22,13 @@ func NewServeMux() *Router {
 }
 
 func (router *Router) Vars(r *http.Request) map[string]string {
-	if params := r.Context().Value(VARS_CTX_KEY); params != nil {
+	if params := r.Context().Value(varsContextKey); params != nil {
 		return params.(map[string]string)
 	}
 	return map[string]string{}
 }
 
-func (router *Router) HandleFunc(pattern string, handler http.HandlerFunc) {
+func (router *Router) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {
 	reg := regexp.MustCompile("^" + pattern + "$")
 	router.handlers[reg] = handler
 }
@@ -50,12 +53,7 @@ func matchURL(pattern *regexp.Regexp, url string) (map[string]string, bool) {
 func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for reg, handler := range router.handlers {
 		if params, ok := matchURL(reg, r.URL.EscapedPath()); ok {
-			ctx := context.WithValue(
-				r.Context(),
-				VARS_CTX_KEY,
-				params,
-			)
-
+			ctx := context.WithValue(r.Context(), varsContextKey, params)
 			handler(w, r.WithContext(ctx))
 			return
 		}
