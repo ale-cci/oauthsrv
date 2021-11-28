@@ -19,7 +19,6 @@ import (
 	"github.com/ale-cci/oauthsrv/pkg/passwords"
 	"github.com/kylelemons/godebug/diff"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/publicsuffix"
 	"gotest.tools/assert"
 )
@@ -50,21 +49,16 @@ func TestHandleLoginPost(t *testing.T) {
 	client := NoFollowRedirectClient(srv)
 
 	password, _ := passwords.New(rand.Reader, "password")
-	_, err := cnf.Database.Collection("identities").UpdateOne(
+	cnf.Database.Collection("identities").Drop(context.Background())
+	_, err := cnf.Database.Collection("identities").InsertOne(
 		context.Background(),
 		bson.D{
 			{Key: "_id", Value: "unique-login-uid"},
 			{Key: "email", Value: "test@email.com"},
+			{Key: "password", Value: password},
 		},
-		bson.D{{
-			Key:   "$set",
-			Value: bson.D{{Key: "password", Value: password}},
-		}},
-		options.Update().SetUpsert(true),
 	)
-	if err != nil {
-		t.Fatalf("Unable to insert test user: %v", err)
-	}
+	assert.NilError(t, err)
 
 	t.Run("should allow authentication only when username and password matches", func(t *testing.T) {
 		tt := []struct {
