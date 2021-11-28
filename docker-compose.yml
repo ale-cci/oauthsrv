@@ -20,13 +20,11 @@ services:
 
   oauthsrv-test:
     image: oauthsrv:0.1
+    tty: true
     command:
-      - 'watcher'
-      - '-dotfiles=false'
-      - '-recursive=true'
-      - '-keepalive'
-      - '-cmd=go test ./...'
-      - ./
+      - 'gotestsum'
+      - '--watch'
+      - '--format=testname'
     depends_on:
       - oauthsrv
       - mongo
