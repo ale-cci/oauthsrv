@@ -43,4 +43,26 @@ func TestMux(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Equal(t, resp.StatusCode, http.StatusNotFound)
 	})
+
+	t.Run("should not match if pattern isn't at the start", func(t *testing.T) {
+		resp, err := srv.Client().Get(srv.URL + "/another/test/1")
+		assert.NilError(t, err)
+		assert.Equal(t, resp.StatusCode, http.StatusNotFound)
+	})
+
+	t.Run("should not match if pattern isn't at the end", func(t *testing.T) {
+		resp, err := srv.Client().Get(srv.URL + "/test/1/subsection")
+		assert.NilError(t, err)
+		assert.Equal(t, resp.StatusCode, http.StatusNotFound)
+	})
+
+	t.Run("should add value provided as url parameter", func(t *testing.T) {
+		resp, err := srv.Client().Get(srv.URL + "/test/the_value")
+		assert.NilError(t, err)
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
+
+		body, err := ioutil.ReadAll(resp.Body)
+		assert.NilError(t, err)
+		assert.Equal(t, string(body), "hello from the_value")
+	})
 }
