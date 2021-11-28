@@ -23,7 +23,7 @@ func AddRoutes(cnf *Config, router Router) {
 		{"/healthcheck", handleHealthCheck},
 		{"/login", handleLogin},
 		{"/oauth/v2/auth", handleAuth},
-		{"/api/users/1/groups", handleGroups},
+		{"/api/users/(?P<user_id>[\\w-]+)/groups", handleGroups},
 	}
 	for _, route := range routes {
 		router.HandleFunc(route.Endpoint, cnf.apply(route.Handler))
