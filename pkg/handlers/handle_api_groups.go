@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/ale-cci/oauthsrv/pkg/jwt"
 	"github.com/ale-cci/oauthsrv/pkg/mux"
@@ -33,6 +34,33 @@ func getJWTBody(r *http.Request) (jwt.JWTBody, error) {
 	return jwtBody, nil
 }
 
+func canReadGroups(groups []string) []regexp.Regexp {
+	regs := []regexp.Regexp{}
+	allMatcher := regexp.MustCompile(".*")
+
+	roleMatchers := []*regexp.Regexp{
+		regexp.MustCompile("^(.*):admin$"),
+		regexp.MustCompile("^(.*):manager$"),
+	}
+
+	for _, group := range groups {
+		if group == "admin" || group == "manager" {
+			return append(regs, *allMatcher)
+		}
+
+		for _, roleMatcher := range roleMatchers {
+			matches := roleMatcher.FindStringSubmatch(group)
+
+			if len(matches) > 0 {
+				groupName := matches[1]
+				reg := fmt.Sprintf("%s:.*", groupName)
+				regs = append(regs, *regexp.MustCompile(reg))
+			}
+		}
+	}
+	return regs
+}
+
 func handleGroupsGET(cnf *Config, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 	encoder := json.NewEncoder(w)
@@ -43,28 +71,31 @@ func handleGroupsGET(cnf *Config, w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	requestedId := params["user_id"]
 
-	var user struct {
-		Groups []string `json:"groups"`
-	}
-	cnf.Database.Collection("identities").FindOne(
-		r.Context(),
-		bson.D{{Key: "_id", Value: subId}},
-	).Decode(&user)
-
-	isSuperUser := false
-	for _, g := range user.Groups {
-		if g == "admin" || g == "manager" {
-			isSuperUser = true
-			break
+	var readableGroups []regexp.Regexp
+	{
+		// retrieve sub groups
+		var user struct {
+			Groups []string `json:"groups"`
 		}
+		cnf.Database.Collection("identities").FindOne(
+			r.Context(),
+			bson.D{{Key: "_id", Value: subId}},
+		).Decode(&user)
+
+		readableGroups = canReadGroups(user.Groups)
 	}
 
-	if subId != requestedId && !isSuperUser {
+	if subId != requestedId && len(readableGroups) == 0 {
 		w.WriteHeader(http.StatusForbidden)
 		encoder.Encode(JSONApi{
-			Message: "Not Authorized",
+			Message: "Tokens lacks the permission to read user groups",
 		})
 		return
+	}
+
+	// retrieve sub groups
+	var user struct {
+		Groups []string `json:"groups"`
 	}
 
 	cnf.Database.Collection("identities").FindOne(
@@ -72,9 +103,23 @@ func handleGroupsGET(cnf *Config, w http.ResponseWriter, r *http.Request) {
 		bson.D{{Key: "_id", Value: requestedId}},
 	).Decode(&user)
 
-	if user.Groups == nil {
-		user.Groups = []string{}
+	visibleGroups := []string{}
+
+	for _, group := range user.Groups {
+		hasMatch := subId == requestedId
+		if !hasMatch {
+			for _, reg := range readableGroups {
+				if reg.MatchString(group) {
+					hasMatch = true
+				}
+			}
+		}
+
+		if hasMatch {
+			visibleGroups = append(visibleGroups, group)
+		}
 	}
+	user.Groups = visibleGroups
 
 	encoder.Encode(JSONApi{
 		Data: user,

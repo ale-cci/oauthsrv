@@ -2,7 +2,6 @@ package handlers_test
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,7 +12,6 @@ import (
 	"github.com/ale-cci/oauthsrv/pkg/handlers"
 	"github.com/ale-cci/oauthsrv/pkg/jwt"
 	"github.com/ale-cci/oauthsrv/pkg/mux"
-	"github.com/ale-cci/oauthsrv/pkg/passwords"
 	"go.mongodb.org/mongo-driver/bson"
 	"gotest.tools/assert"
 )
@@ -27,8 +25,6 @@ func TestHandleGroupsApi(t *testing.T) {
 	defer srv.Close()
 
 	cnf.Database.Collection("identities").Drop(context.Background())
-	passwd, _ := passwords.New(rand.Reader, "password")
-
 	client := srv.Client()
 
 	cnf.Database.Collection("identities").InsertMany(
@@ -36,26 +32,26 @@ func TestHandleGroupsApi(t *testing.T) {
 		[]interface{}{
 			bson.D{
 				{Key: "_id", Value: "the-first-user"},
-				{Key: "email", Value: "test@email.com"},
-				{Key: "password", Value: passwd},
 			},
 			bson.D{
 				{Key: "_id", Value: "the-second-user"},
-				{Key: "email", Value: "another@email.com"},
-				{Key: "password", Value: passwd},
-				{Key: "groups", Value: []string{"uno", "dos", "tres"}},
+				{Key: "groups", Value: []string{"app1:view", "app-2:read", "app-3:admin"}},
 			},
 			bson.D{
 				{Key: "_id", Value: "admin-user"},
-				{Key: "email", Value: "admond@email.com"},
-				{Key: "password", Value: passwd},
 				{Key: "groups", Value: []string{"admin"}},
 			},
 			bson.D{
 				{Key: "_id", Value: "the-manager"},
-				{Key: "email", Value: "managerz@email.com"},
-				{Key: "password", Value: passwd},
 				{Key: "groups", Value: []string{"manager"}},
+			},
+			bson.D{
+				{Key: "_id", Value: "the-app1-admin"},
+				{Key: "groups", Value: []string{"app1:admin"}},
+			},
+			bson.D{
+				{Key: "_id", Value: "the-app2-manager"},
+				{Key: "groups", Value: []string{"app-2:manager"}},
 			},
 		},
 	)
@@ -70,8 +66,6 @@ func TestHandleGroupsApi(t *testing.T) {
 	})
 
 	token1, err := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{"sub": "the-first-user"})
-	assert.NilError(t, err)
-	token2, err := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{"sub": "the-second-user"})
 	assert.NilError(t, err)
 
 	t.Run("owner should be able to check it's groups", func(t *testing.T) {
@@ -101,8 +95,22 @@ func TestHandleGroupsApi(t *testing.T) {
 		})
 	})
 
-	t.Run("other users should not be able to retrieve other's groups", func(t *testing.T) {
+	t.Run("should return 403 if sub is not provided", func(t *testing.T) {
 		req, err := http.NewRequest("GET", srv.URL+"/api/users/the-first-user/groups", nil)
+		assert.NilError(t, err)
+		token, err := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{})
+		assert.NilError(t, err)
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+		resp, err := client.Do(req)
+		assert.NilError(t, err)
+		assert.Equal(t, resp.StatusCode, http.StatusForbidden)
+	})
+
+	t.Run("users without any permissions should not be able to retrieve user groups", func(t *testing.T) {
+		req, err := http.NewRequest("GET", srv.URL+"/api/users/the-second-user/groups", nil)
+		assert.NilError(t, err)
+		token2, err := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{"sub": "the-first-user"})
 		assert.NilError(t, err)
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token2))
 
@@ -128,94 +136,79 @@ func TestHandleGroupsApi(t *testing.T) {
 		})
 	})
 
-	t.Run("should return 403 if sub is not provided", func(t *testing.T) {
-		req, err := http.NewRequest("GET", srv.URL+"/api/users/the-first-user/groups", nil)
-		assert.NilError(t, err)
-		token, err := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{})
-		assert.NilError(t, err)
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-
-		resp, err := client.Do(req)
-		assert.NilError(t, err)
-		assert.Equal(t, resp.StatusCode, http.StatusForbidden)
-	})
-
-	t.Run("should return non empty list if user has groups", func(t *testing.T) {
-		req, err := http.NewRequest("GET", srv.URL+"/api/users/the-second-user/groups", nil)
-		assert.NilError(t, err)
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token2))
-
-		resp, err := client.Do(req)
-		assert.NilError(t, err)
-		assert.Equal(t, resp.StatusCode, http.StatusOK)
-
-		var response struct {
-			Data struct {
-				Groups []string `json:"groups"`
-			} `json:"data"`
-		}
-		body, err := io.ReadAll(resp.Body)
-		assert.NilError(t, err)
-
-		err = json.Unmarshal(body, &response)
-		assert.NilError(t, err)
-
-		assert.DeepEqual(t, response.Data.Groups, []string{"uno", "dos", "tres"})
-	})
-
-	t.Run("returns list of groups if user performing the request is admin", func(t *testing.T) {
-		req, err := http.NewRequest("GET", srv.URL+"/api/users/the-second-user/groups", nil)
-		assert.NilError(t, err)
-
-		token, err := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{
-			"sub": "admin-user",
-		})
-		assert.NilError(t, err)
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-
-		resp, err := client.Do(req)
-		assert.NilError(t, err)
-		assert.Equal(t, resp.StatusCode, http.StatusOK)
-
-		var response struct {
-			Data struct {
-				Groups []string `json:"groups"`
-			} `json:"data"`
-		}
-		body, err := io.ReadAll(resp.Body)
-		assert.NilError(t, err)
-
-		err = json.Unmarshal(body, &response)
-		assert.NilError(t, err)
-
-		assert.DeepEqual(t, response.Data.Groups, []string{"uno", "dos", "tres"})
-	})
-
 	t.Run("returns list of groups if user performing the request is manager", func(t *testing.T) {
-		req, err := http.NewRequest("GET", srv.URL+"/api/users/the-second-user/groups", nil)
-		assert.NilError(t, err)
-
-		token, err := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{
-			"sub": "the-manager",
-		})
-		assert.NilError(t, err)
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-
-		resp, err := client.Do(req)
-		assert.NilError(t, err)
-		assert.Equal(t, resp.StatusCode, http.StatusOK)
-
-		var response struct {
-			Data struct {
-				Groups []string `json:"groups"`
-			} `json:"data"`
+		tt := []struct {
+			TcName      string
+			GetGroupsOf string
+			Sub         string
+			ViewsGroups []string
+		}{
+			{
+				TcName:      "group's owner can view his groups",
+				Sub:         "the-second-user",
+				GetGroupsOf: "the-second-user",
+				ViewsGroups: []string{"app1:view", "app-2:read", "app-3:admin"},
+			},
+			{
+				TcName:      "managers can view all groups",
+				Sub:         "the-manager",
+				GetGroupsOf: "the-second-user",
+				ViewsGroups: []string{"app1:view", "app-2:read", "app-3:admin"},
+			},
+			{
+				TcName:      "admin can view all groups",
+				Sub:         "admin-user",
+				GetGroupsOf: "the-second-user",
+				ViewsGroups: []string{"app1:view", "app-2:read", "app-3:admin"},
+			},
+			{
+				TcName:      "app admins can only view it's app groups",
+				Sub:         "the-app1-admin",
+				GetGroupsOf: "the-second-user",
+				ViewsGroups: []string{"app1:view"},
+			},
+			{
+				TcName:      "app managers can only view it's app groups",
+				Sub:         "the-app2-manager",
+				GetGroupsOf: "the-second-user",
+				ViewsGroups: []string{"app-2:read"},
+			},
+			{
+				TcName:      "user without permissions should not see other's groups",
+				Sub:         "the-second-user",
+				GetGroupsOf: "the-first-user",
+				ViewsGroups: []string{},
+			},
 		}
-		body, err := io.ReadAll(resp.Body)
-		assert.NilError(t, err)
 
-		err = json.Unmarshal(body, &response)
-		assert.NilError(t, err)
+		for id, tc := range tt {
+			t.Run(fmt.Sprintf("[%d] %s", id, tc.TcName), func(t *testing.T) {
+				req, err := http.NewRequest("GET", srv.URL+"/api/users/"+tc.GetGroupsOf+"/groups", nil)
+				assert.NilError(t, err)
 
-		assert.DeepEqual(t, response.Data.Groups, []string{"uno", "dos", "tres"})
+				token, err := jwt.NewJWT(cnf.Keystore, jwt.JWTBody{
+					"sub": tc.Sub,
+				})
+				assert.NilError(t, err)
+				req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+				resp, err := client.Do(req)
+				assert.NilError(t, err)
+				assert.Equal(t, resp.StatusCode, http.StatusOK)
+
+				var response struct {
+					Data struct {
+						Groups []string `json:"groups"`
+					} `json:"data"`
+				}
+				body, err := io.ReadAll(resp.Body)
+				assert.NilError(t, err)
+
+				err = json.Unmarshal(body, &response)
+				assert.NilError(t, err)
+
+				assert.DeepEqual(t, response.Data.Groups, tc.ViewsGroups)
+			})
+		}
 	})
 }
